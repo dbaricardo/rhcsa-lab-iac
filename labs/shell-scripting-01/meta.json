@@ -1,0 +1,21 @@
+{
+  "id": "shell-scripting-01",
+  "number": 10,
+  "title": "Script bash com validação de argumentos e processamento em loop",
+  "domain": "Write and run simple shell scripts using conditionals, loops, and correct exit codes",
+  "hosts": ["workstation"],
+  "description": "Escreva um script bash reutilizável que processa uma lista de nomes vinda de um arquivo, validando a chamada e produzindo um pequeno relatório.",
+  "instructions": [
+    "Crie o script executável ~/scripts/relatorio-nomes.sh (o diretório ~/scripts/ já existe, criado pelo lab start).",
+    "Se o script for chamado sem nenhum argumento, ele deve imprimir uma mensagem de uso em stderr e terminar com código de saída 1, sem processar nada.",
+    "Se o argumento passado não for um arquivo existente, o script deve imprimir uma mensagem de erro em stderr e terminar com código de saída 1.",
+    "Se o argumento for um arquivo válido, o script deve ler cada linha não vazia como um nome e imprimir 'Processando: <nome>' para cada um, na ordem em que aparecem no arquivo.",
+    "Ao final do processamento bem-sucedido, o script deve imprimir uma última linha EXATAMENTE no formato 'Total: N' (onde N é a quantidade de nomes processados) e terminar com código de saída 0.",
+    "Um arquivo de teste já está disponível em ~/scripts/dados-nomes.txt (criado pelo lab start) para você testar o script."
+  ],
+  "warning": "A linha final deve ser exatamente 'Total: N' (maiúsculas/minúsculas e espaçamento importam) -- é isso que o grade.sh procura para confirmar o resultado.",
+  "solve_target": "workstation",
+  "solve_method": "console",
+  "solve_command": "N/A -- execute localmente na workstation, como o usuário student",
+  "solve_note": "Diferente dos outros exercícios, este roda inteiramente na workstation, como o usuário student -- não há SSH para outro host aqui."
+}

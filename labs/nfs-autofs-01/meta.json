@@ -1,0 +1,18 @@
+{
+  "id": "nfs-autofs-01",
+  "number": 9,
+  "title": "Compartilhamento NFS com automontagem via autofs",
+  "domain": "Manage layered storage / NFS network file systems",
+  "hosts": ["servera", "serverb"],
+  "description": "Exporte um diretório via NFS em servera e monte-o automaticamente por demanda em serverb usando autofs.",
+  "instructions": [
+    "Em servera: crie /export/dados-equipe e exporte-o via NFS (somente leitura) para a rede do lab, liberando o serviço nfs no firewalld.",
+    "Em serverb: configure autofs para montar servera:/export/dados-equipe automaticamente em /mnt/dados-equipe ao ser acessado.",
+    "Confirme que acessar /mnt/dados-equipe em serverb dispara a montagem sob demanda."
+  ],
+  "warning": "Exercício multi-host: resolva primeiro em servera (export), depois em serverb (autofs), antes de rodar lab grade.",
+  "solve_target": "servera (exporta) e serverb (automonta)",
+  "solve_method": "ssh",
+  "solve_command": "ssh servera",
+  "solve_note": "Resolva primeiro em servera, depois em serverb. lab start/grade/finish continuam sendo executados na workstation."
+}

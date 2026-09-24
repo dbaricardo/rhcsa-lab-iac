@@ -1,0 +1,13 @@
+---
+- name: Instalar pacotes de servidor comuns aos exercícios
+  ansible.builtin.dnf:
+    name:
+      - firewalld
+      - policycoreutils-python-utils
+      - setroubleshoot-server
+      - nfs-utils
+      - autofs
+    state: present
+
+- name: Confirmar discos extra de storage/LVM
+  ansible.builtin.include_tasks: extra-disks.yml

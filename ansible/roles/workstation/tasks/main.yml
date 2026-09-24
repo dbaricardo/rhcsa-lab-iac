@@ -1,0 +1,17 @@
+---
+- name: Instalar pacotes cliente
+  ansible.builtin.dnf:
+    name:
+      - openssh-clients
+      - bash-completion
+      - vim-enhanced
+      - tree
+    state: present
+
+- name: Instalar dispatcher remoto /usr/local/bin/lab
+  ansible.builtin.copy:
+    src: lab
+    dest: /usr/local/bin/lab
+    owner: root
+    group: root
+    mode: "0755"

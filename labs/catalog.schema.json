@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RHCSA lab exercise metadata",
+  "type": "object",
+  "required": ["id", "number", "title", "domain", "hosts", "description", "instructions"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "number": {"type": "integer", "minimum": 1},
+    "title": {"type": "string"},
+    "domain": {"type": "string"},
+    "hosts": {
+      "type": "array",
+      "items": {"enum": ["workstation", "servera", "serverb"]},
+      "minItems": 1
+    },
+    "description": {"type": "string"},
+    "instructions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "warning": {"type": "string"},
+    "solve_target": {"type": "string"},
+    "solve_method": {"type": "string"},
+    "solve_command": {"type": "string"},
+    "solve_note": {"type": "string"}
+  }
+}

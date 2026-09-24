@@ -1,0 +1,46 @@
+---
+# Roda contra os 3 hosts na mesma passada (site.yml aplica este role a
+# `all`), usando hostvars para levar a chave pública gerada na workstation
+# até servera/serverb -- evita a condição de corrida de gerar a chave numa
+# execução e distribuir noutra.
+
+- name: Gerar par de chaves ed25519 para o student na workstation
+  ansible.builtin.user:
+    name: "{{ lab_student_user }}"
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_file: .ssh/id_ed25519
+    ssh_key_comment: "{{ lab_student_user }}@workstation"
+  when: inventory_hostname == 'workstation'
+
+- name: Ler a chave pública gerada na workstation
+  ansible.builtin.slurp:
+    src: "/home/{{ lab_student_user }}/.ssh/id_ed25519.pub"
+  register: workstation_pubkey_raw
+  when: inventory_hostname == 'workstation'
+
+- name: Publicar a chave pública como fato (acessível via hostvars pelos outros hosts)
+  ansible.builtin.set_fact:
+    workstation_student_pubkey: "{{ workstation_pubkey_raw.content | b64decode }}"
+  when: inventory_hostname == 'workstation'
+
+- name: Autorizar a chave da workstation em servera/serverb
+  ansible.posix.authorized_key:
+    user: "{{ lab_student_user }}"
+    key: "{{ hostvars['workstation'].workstation_student_pubkey }}"
+    state: present
+  when: inventory_hostname in ['servera', 'serverb']
+
+- name: Ler topologia de machines.yaml (para ~/.ssh/config)
+  ansible.builtin.set_fact:
+    lab_machines: "{{ (lookup('file', playbook_dir + '/../machines.yaml') | from_yaml).machines }}"
+  when: inventory_hostname == 'workstation'
+
+- name: Gerar ~/.ssh/config na workstation com aliases servera/serverb
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "/home/{{ lab_student_user }}/.ssh/config"
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0600"
+  when: inventory_hostname == 'workstation'

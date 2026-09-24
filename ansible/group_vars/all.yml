@@ -1,0 +1,12 @@
+---
+# Valores de fallback -- normalmente TODOS estes vêm de extra_vars injetadas
+# pelo Vagrantfile a partir de machines.yaml (ver `ansible.extra_vars` no
+# Vagrantfile). Só são usados se o playbook for rodado fora do `vagrant up`
+# (ex.: `ansible-playbook -i inventario ansible/site.yml` manual/CI).
+lab_domain: lab.example.com
+lab_student_user: student
+lab_network_cidr: 192.168.56.0/24
+dashboard_host: workstation
+dashboard_port: 8421
+dashboard_allowed_source: 192.168.56.0/24
+dashboard_bind_host: "0.0.0.0"

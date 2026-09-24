@@ -1,0 +1,226 @@
+[
+  {
+    "id": "users-groups-01",
+    "number": 1,
+    "title": "Usuários, grupos e política de senha",
+    "domain": "Create and configure local users and groups",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Crie contas e associações de grupo para uma equipe fictícia, aplicando uma regra de expiração de senha.",
+    "instructions": [
+      "Crie o grupo 'equipe-suporte'.",
+      "Crie o usuário 'ana' com shell /bin/bash, membro secundário de 'equipe-suporte'.",
+      "Crie o usuário 'bruno' sem shell interativo (nologin) e sem pertencer a 'equipe-suporte'.",
+      "Configure a conta de 'ana' para exigir troca de senha a cada 90 dias (chage)."
+    ],
+    "warning": "Não reutilize os nomes 'ana'/'bruno'/'equipe-suporte' em outros exercícios deste host.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "permissions-acl-01",
+    "number": 2,
+    "title": "Permissões especiais (SGID) e ACLs em diretório compartilhado",
+    "domain": "Manage file permissions, special bits, and access control lists (ACLs)",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Um diretório de projeto passa a ser compartilhado por uma equipe. Novos arquivos criados nele devem herdar automaticamente o grupo do projeto, e uma colaboradora que não pertence ao grupo precisa de acesso pontual só a esse diretório.",
+    "instructions": [
+      "Crie o grupo 'projeto-atlas' (se ainda não existir).",
+      "Crie o diretório /dados/projeto-atlas, propriedade root:projeto-atlas, com permissões 2770 (rwxrws--- -- SGID habilitado, outros sem nenhum acesso).",
+      "A usuária 'carla' (já criada pelo lab start) NÃO deve ser adicionada ao grupo 'projeto-atlas'. Em vez disso, conceda a ela acesso de leitura e escrita nesse diretório usando uma ACL nomeada (setfacl -m u:carla:rw ...).",
+      "Configure também uma ACL padrão (default ACL) em /dados/projeto-atlas para que arquivos criados dentro dele no futuro herdem automaticamente o mesmo acesso de leitura/escrita para carla (setfacl -d -m u:carla:rw ...)."
+    ],
+    "warning": "Não adicione 'carla' ao grupo 'projeto-atlas' -- o objetivo do exercício é resolver o acesso dela via ACL, não via associação de grupo.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "storage-lvm-01",
+    "number": 3,
+    "title": "Armazenamento em camadas com LVM (PV/VG/LV) e XFS",
+    "domain": "Configure and manage layered storage with LVM and file systems",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Um disco extra de aproximadamente 6GB está disponível em serverb para armazenar mídia de um projeto interno. Configure-o via LVM para permitir expansão futura sem reparticionar.",
+    "instructions": [
+      "Identifique o disco extra de ~6GB (não é o disco do sistema) usando lsblk -- nunca assuma um nome fixo como /dev/sdb.",
+      "Transforme esse disco (ou uma partição nele) em um physical volume (PV) do LVM.",
+      "Crie o volume group 'vg_conteudo' sobre esse PV.",
+      "Crie o logical volume 'lv_midia' dentro de 'vg_conteudo' com pelo menos 4GB.",
+      "Formate 'lv_midia' com XFS e monte-o de forma permanente (via /etc/fstab) em /midia."
+    ],
+    "warning": "Este é o disco de ~6GB (vmdata1). Há um segundo disco extra de ~1GB (vmdata2) neste mesmo host, usado por outro exercício ('filesystems-01') -- não confunda os dois.",
+    "solve_target": "serverb",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Resolva na serverb. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "serverb"
+  },
+  {
+    "id": "filesystems-01",
+    "number": 4,
+    "title": "Partição, filesystem ext4 e swap adicional",
+    "domain": "Create simple file systems and manage swap space",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Um segundo disco extra, bem menor (~1GB), está disponível em serverb para praticar particionamento simples: parte dele vira um filesystem persistente para dados de aplicação, e o restante vira swap adicional.",
+    "instructions": [
+      "Identifique o disco extra de ~1GB (diferente do disco de ~6GB usado em 'storage-lvm-01') usando lsblk -- nunca assuma um nome fixo de dispositivo.",
+      "Crie nesse disco duas partições: uma para um filesystem e outra para swap.",
+      "Formate a partição de filesystem com ext4 e monte-a de forma permanente (via /etc/fstab) em /appdata.",
+      "Formate a partição restante como swap, ative-a e garanta que ela seja habilitada permanentemente (via /etc/fstab), de modo que apareça em 'swapon --show'."
+    ],
+    "warning": "Este é o disco de ~1GB (vmdata2), diferente do disco de ~6GB (vmdata1) usado por 'storage-lvm-01' no mesmo host -- use resolve_disco 1 para identificá-lo corretamente.",
+    "solve_target": "serverb",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Resolva na serverb. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "serverb"
+  },
+  {
+    "id": "networking-nmcli-01",
+    "number": 5,
+    "title": "Perfil de conexão estático com nmcli (sem afetar a interface de gerenciamento)",
+    "domain": "Configure networking with nmcli, including static IPv4 settings",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Pratique a criação de um perfil de conexão NetworkManager com IPv4 estático, associado a uma interface lógica de testes -- sem tocar na interface real que carrega o SSH deste host.",
+    "instructions": [
+      "Crie um novo perfil de conexão NetworkManager chamado 'perfil-backup', do tipo ethernet, associado ao nome de interface lógico 'eth1' (que não existe fisicamente neste host).",
+      "Configure esse perfil com IPv4 estático: endereço 192.168.100.50/24, gateway 192.168.100.1 e DNS 192.168.100.1.",
+      "NÃO ative esse perfil (nmcli connection up) -- ele deve existir apenas como configuração salva, sem alterar a conectividade atual do host."
+    ],
+    "warning": "NÃO edite nem ative a conexão da interface de gerenciamento real (a que carrega esta sessão SSH) -- isso pode derrubar seu próprio acesso remoto. Trabalhe só no novo perfil 'perfil-backup'.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "systemd-services-01",
+    "number": 6,
+    "title": "Unit systemd customizada + timer substituindo cron",
+    "domain": "Create and manage systemd units and timers",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Substitua uma tarefa periódica que seria feita por cron por um serviço e um timer systemd nativos, habilitados no boot.",
+    "instructions": [
+      "Crie a unit /etc/systemd/system/heartbeat.service (tipo oneshot) que, ao ser executada, grava uma linha com a data/hora atual em /var/log/heartbeat.log.",
+      "Crie a unit /etc/systemd/system/heartbeat.timer para disparar heartbeat.service periodicamente (por exemplo, a cada 1 ou 5 minutos), no lugar de uma entrada de cron.",
+      "Habilite (enable) e inicie o heartbeat.timer, garantindo que ele suba automaticamente no próximo boot.",
+      "Confirme que executar heartbeat.service manualmente (systemctl start heartbeat.service) grava uma nova linha em /var/log/heartbeat.log."
+    ],
+    "warning": "Habilite o TIMER (heartbeat.timer), não o service diretamente -- é o timer que precisa estar habilitado/ativo no boot.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "selinux-01",
+    "number": 7,
+    "title": "Contexto SELinux, porta customizada e boolean para um serviço web",
+    "domain": "Manage SELinux file contexts, ports and booleans for network services",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Um serviço web fictício ('portal-noturno') precisa servir conteúdo de um diretório fora do docroot padrão do Apache, escutar numa porta não padronizada e ter permissão para abrir conexões de saída -- tudo isso sob SELinux enforcing.",
+    "instructions": [
+      "Crie o diretório /srv/portal-noturno com um arquivo index.html contendo exatamente o texto 'Portal Noturno OK' (sem tags HTML).",
+      "Rotule /srv/portal-noturno (e seu conteúdo) com o contexto SELinux httpd_sys_content_t de forma persistente, usando semanage fcontext + restorecon -- não apenas chcon.",
+      "Configure o Apache (httpd, já instalado pelo lab start) para usar /srv/portal-noturno como DocumentRoot e escutar na porta TCP 8585.",
+      "Registre a porta 8585 no SELinux como http_port_t (semanage port), já que o Apache não pode escutar nela sem essa liberação sob SELinux enforcing.",
+      "Habilite o boolean SELinux 'httpd_can_network_connect' permanentemente, simulando a necessidade do portal-noturno de futuramente consultar um serviço de métricas externo.",
+      "Habilite e inicie o serviço httpd."
+    ],
+    "warning": "SELinux deve permanecer enforcing durante todo o exercício -- não desative nem coloque em permissive para 'resolver' o problema; use semanage/restorecon/setsebool corretamente.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "firewalld-01",
+    "number": 8,
+    "title": "Serviço e porta customizados persistentes no firewalld",
+    "domain": "Configure firewall settings with firewalld, including custom services",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Um coletor de métricas interno fictício precisa de uma regra de firewall dedicada, e uma segunda porta avulsa também precisa ser liberada -- ambas de forma permanente.",
+    "instructions": [
+      "Crie um serviço customizado do firewalld chamado 'coletor-noturno', usando a porta TCP 9090, com uma descrição.",
+      "Adicione o serviço 'coletor-noturno' à zona padrão do firewalld, de forma permanente (--permanent).",
+      "Libere também a porta TCP 9191 diretamente (sem usar um serviço) na zona padrão, também de forma permanente.",
+      "Recarregue o firewalld (firewall-cmd --reload) para que a configuração permanente passe a valer em runtime também."
+    ],
+    "warning": "Toda alteração deve ser feita com --permanent e depois recarregada -- alterações só em runtime (sem --permanent) não sobrevivem a um reload/reboot e não serão aceitas pela correção.",
+    "solve_target": "servera",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "nfs-autofs-01",
+    "number": 9,
+    "title": "Compartilhamento NFS com automontagem via autofs",
+    "domain": "Manage layered storage / NFS network file systems",
+    "hosts": [
+      "servera",
+      "serverb"
+    ],
+    "description": "Exporte um diretório via NFS em servera e monte-o automaticamente por demanda em serverb usando autofs.",
+    "instructions": [
+      "Em servera: crie /export/dados-equipe e exporte-o via NFS (somente leitura) para a rede do lab, liberando o serviço nfs no firewalld.",
+      "Em serverb: configure autofs para montar servera:/export/dados-equipe automaticamente em /mnt/dados-equipe ao ser acessado.",
+      "Confirme que acessar /mnt/dados-equipe em serverb dispara a montagem sob demanda."
+    ],
+    "warning": "Exercício multi-host: resolva primeiro em servera (export), depois em serverb (autofs), antes de rodar lab grade.",
+    "solve_target": "servera (exporta) e serverb (automonta)",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Resolva primeiro em servera, depois em serverb. lab start/grade/finish continuam sendo executados na workstation.",
+    "host": "servera"
+  },
+  {
+    "id": "shell-scripting-01",
+    "number": 10,
+    "title": "Script bash com validação de argumentos e processamento em loop",
+    "domain": "Write and run simple shell scripts using conditionals, loops, and correct exit codes",
+    "hosts": [
+      "workstation"
+    ],
+    "description": "Escreva um script bash reutilizável que processa uma lista de nomes vinda de um arquivo, validando a chamada e produzindo um pequeno relatório.",
+    "instructions": [
+      "Crie o script executável ~/scripts/relatorio-nomes.sh (o diretório ~/scripts/ já existe, criado pelo lab start).",
+      "Se o script for chamado sem nenhum argumento, ele deve imprimir uma mensagem de uso em stderr e terminar com código de saída 1, sem processar nada.",
+      "Se o argumento passado não for um arquivo existente, o script deve imprimir uma mensagem de erro em stderr e terminar com código de saída 1.",
+      "Se o argumento for um arquivo válido, o script deve ler cada linha não vazia como um nome e imprimir 'Processando: <nome>' para cada um, na ordem em que aparecem no arquivo.",
+      "Ao final do processamento bem-sucedido, o script deve imprimir uma última linha EXATAMENTE no formato 'Total: N' (onde N é a quantidade de nomes processados) e terminar com código de saída 0.",
+      "Um arquivo de teste já está disponível em ~/scripts/dados-nomes.txt (criado pelo lab start) para você testar o script."
+    ],
+    "warning": "A linha final deve ser exatamente 'Total: N' (maiúsculas/minúsculas e espaçamento importam) -- é isso que o grade.sh procura para confirmar o resultado.",
+    "solve_target": "workstation",
+    "solve_method": "console",
+    "solve_command": "N/A -- execute localmente na workstation, como o usuário student",
+    "solve_note": "Diferente dos outros exercícios, este roda inteiramente na workstation, como o usuário student -- não há SSH para outro host aqui.",
+    "host": "workstation"
+  }
+]

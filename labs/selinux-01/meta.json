@@ -1,0 +1,21 @@
+{
+  "id": "selinux-01",
+  "number": 7,
+  "title": "Contexto SELinux, porta customizada e boolean para um serviço web",
+  "domain": "Manage SELinux file contexts, ports and booleans for network services",
+  "hosts": ["servera"],
+  "description": "Um serviço web fictício ('portal-noturno') precisa servir conteúdo de um diretório fora do docroot padrão do Apache, escutar numa porta não padronizada e ter permissão para abrir conexões de saída -- tudo isso sob SELinux enforcing.",
+  "instructions": [
+    "Crie o diretório /srv/portal-noturno com um arquivo index.html contendo exatamente o texto 'Portal Noturno OK' (sem tags HTML).",
+    "Rotule /srv/portal-noturno (e seu conteúdo) com o contexto SELinux httpd_sys_content_t de forma persistente, usando semanage fcontext + restorecon -- não apenas chcon.",
+    "Configure o Apache (httpd, já instalado pelo lab start) para usar /srv/portal-noturno como DocumentRoot e escutar na porta TCP 8585.",
+    "Registre a porta 8585 no SELinux como http_port_t (semanage port), já que o Apache não pode escutar nela sem essa liberação sob SELinux enforcing.",
+    "Habilite o boolean SELinux 'httpd_can_network_connect' permanentemente, simulando a necessidade do portal-noturno de futuramente consultar um serviço de métricas externo.",
+    "Habilite e inicie o serviço httpd."
+  ],
+  "warning": "SELinux deve permanecer enforcing durante todo o exercício -- não desative nem coloque em permissive para 'resolver' o problema; use semanage/restorecon/setsebool corretamente.",
+  "solve_target": "servera",
+  "solve_method": "ssh",
+  "solve_command": "ssh servera",
+  "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation."
+}

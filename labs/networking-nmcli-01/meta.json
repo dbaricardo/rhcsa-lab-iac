@@ -1,0 +1,18 @@
+{
+  "id": "networking-nmcli-01",
+  "number": 5,
+  "title": "Perfil de conexão estático com nmcli (sem afetar a interface de gerenciamento)",
+  "domain": "Configure networking with nmcli, including static IPv4 settings",
+  "hosts": ["servera"],
+  "description": "Pratique a criação de um perfil de conexão NetworkManager com IPv4 estático, associado a uma interface lógica de testes -- sem tocar na interface real que carrega o SSH deste host.",
+  "instructions": [
+    "Crie um novo perfil de conexão NetworkManager chamado 'perfil-backup', do tipo ethernet, associado ao nome de interface lógico 'eth1' (que não existe fisicamente neste host).",
+    "Configure esse perfil com IPv4 estático: endereço 192.168.100.50/24, gateway 192.168.100.1 e DNS 192.168.100.1.",
+    "NÃO ative esse perfil (nmcli connection up) -- ele deve existir apenas como configuração salva, sem alterar a conectividade atual do host."
+  ],
+  "warning": "NÃO edite nem ative a conexão da interface de gerenciamento real (a que carrega esta sessão SSH) -- isso pode derrubar seu próprio acesso remoto. Trabalhe só no novo perfil 'perfil-backup'.",
+  "solve_target": "servera",
+  "solve_method": "ssh",
+  "solve_command": "ssh servera",
+  "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation."
+}

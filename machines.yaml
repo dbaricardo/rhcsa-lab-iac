@@ -1,0 +1,43 @@
+# Especificação central da topologia do lab RHCSA.
+# Vagrantfile, scripts/generate-inventory.py e os grupos do Ansible leem este
+# arquivo — é a única fonte de verdade para hostnames, IPs, specs e discos.
+
+domain: lab.example.com
+box: rhel10-rhcsa-base
+
+network:
+  libvirt_name: rhcsa_lab
+  cidr: 192.168.56.0/24
+  gateway: 192.168.56.1
+
+student:
+  username: student
+
+dashboard:
+  host: workstation
+  port: 8421
+  # Origem permitida no firewalld do host do dashboard. Ajuste para a rede
+  # real de quem for acessar o painel (por padrão, só a rede privada do lab).
+  allowed_source: 192.168.56.0/24
+
+machines:
+  workstation:
+    ip: 192.168.56.10
+    memory_mb: 2048
+    cpus: 2
+    role: client
+  servera:
+    ip: 192.168.56.20
+    memory_mb: 2048
+    cpus: 2
+    role: server
+  serverb:
+    ip: 192.168.56.30
+    memory_mb: 2048
+    cpus: 2
+    role: server
+    extra_disks:
+      - label: vmdata1
+        size_gb: 6
+      - label: vmdata2
+        size_gb: 1

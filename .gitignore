@@ -1,0 +1,12 @@
+.env
+*.iso
+*.qcow2
+*.box
+output/
+.vagrant/
+*.retry
+__pycache__/
+*.pyc
+.pytest_cache/
+.ansible/
+*.log

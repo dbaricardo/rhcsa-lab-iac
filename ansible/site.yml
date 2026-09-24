@@ -1,0 +1,39 @@
+---
+# Playbook principal, disparado automaticamente por `vagrant up`/`vagrant
+# provision` (ver Vagrantfile, ansible.playbook = 'ansible/site.yml',
+# ansible.limit = 'all'). Ordem: infraestrutura comum a todos os hosts
+# primeiro (common + ssh_crosshost dependem de rodar juntos, na mesma play,
+# para o truque de hostvars funcionar), depois os papéis específicos.
+
+- name: RHCSA lab - infraestrutura comum (usuário, hosts, SELinux, SSH cruzado)
+  hosts: all
+  become: true
+  roles:
+    - common
+    - ssh_crosshost
+
+- name: servera - pacotes e exercícios locais atribuídos a este host
+  hosts: servera
+  become: true
+  roles:
+    - servera
+    - lab_common
+
+- name: serverb - pacotes, discos extra e exercícios locais atribuídos a este host
+  hosts: serverb
+  become: true
+  roles:
+    - serverb
+    - lab_common
+
+- name: workstation - dashboard web, dispatcher remoto `lab` e exercícios locais
+  hosts: workstation
+  become: true
+  roles:
+    - dashboard
+    # lab_common instala lab-remote + os exercícios cujo `hosts` inclui
+    # "workstation" (ex.: shell-scripting-01) -- o dispatcher `lab` (role
+    # workstation) invoca lab-remote localmente (sem SSH) quando o alvo é o
+    # próprio host, ver ansible/roles/workstation/files/lab.
+    - lab_common
+    - workstation

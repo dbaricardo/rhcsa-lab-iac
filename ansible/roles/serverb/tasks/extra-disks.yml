@@ -1,0 +1,34 @@
+---
+# Só CONFIRMA presença dos discos extra anexados pelo Vagrantfile (a partir
+# de machines.yaml -> serverb.extra_disks) -- nunca particiona/formata aqui.
+# Os discos ficam brutos de propósito: os próprios exercícios de LVM/storage
+# praticam pvcreate/mkfs do zero, fiel ao exame real. Nunca referenciamos
+# /dev/sdX por nome (bug conhecido, ver docs/troubleshooting.md) -- a
+# contagem por TAMANHO usa a mesma lógica de lab-common.sh.
+
+- name: Ler specs de discos extra de machines.yaml
+  ansible.builtin.set_fact:
+    serverb_extra_disks: "{{ (lookup('file', playbook_dir + '/../machines.yaml') | from_yaml).machines.serverb.extra_disks | default([]) }}"
+  delegate_to: localhost
+  become: false
+
+- name: Listar discos crus (sem partições, sem ser o disco do SO) via lsblk
+  ansible.builtin.shell: |
+    set -euo pipefail
+    disco_so="$(lsblk -nsrpo NAME "$(findmnt -no SOURCE /)" | tail -n1)"
+    lsblk -nrbo NAME,TYPE,SIZE | awk -v so="$(basename "$disco_so")" \
+      '$2=="disk" && $1!=so {print $1, $3}'
+  changed_when: false
+  register: serverb_raw_disks
+
+- name: Falhar cedo se a quantidade de discos crus não bate com machines.yaml
+  ansible.builtin.assert:
+    that:
+      - serverb_raw_disks.stdout_lines | length >= serverb_extra_disks | length
+    fail_msg: >-
+      Esperava pelo menos {{ serverb_extra_disks | length }} disco(s) extra
+      brutos em serverb (definidos em machines.yaml), mas lsblk só mostrou
+      {{ serverb_raw_disks.stdout_lines | length }}. Confira o bloco
+      `libvirt.storage` no Vagrantfile.
+    success_msg: "Discos extra de serverb confirmados: {{ serverb_raw_disks.stdout_lines }}"
+  when: serverb_extra_disks | length > 0

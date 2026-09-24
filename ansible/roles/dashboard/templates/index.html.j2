@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>RHCSA · Laboratório</title>
+<style>
+:root{--bg:#131516;--panel:#1b1e20;--raised:#24282b;--border:#373c40;--ink:#f0f0ed;--muted:#b1b6ba;--quiet:#90979d;--accent:#ee7777;--green:#91d2a6;--amber:#f0c273;--red:#ff9393;--mono:Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}html{scrollbar-gutter:stable}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Arial,Helvetica,sans-serif}button,input,select{font:inherit}button,input,select{color:inherit}button{cursor:pointer;border:1px solid var(--border);background:var(--raised);border-radius:5px;padding:10px 14px;min-height:44px;font-weight:600}button:hover{background:#303538;border-color:#737a80}button:disabled{opacity:.5;cursor:default}a{color:var(--ink);text-underline-offset:4px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,pre:focus-visible{outline:2px solid var(--accent);outline-offset:4px}[hidden]{display:none!important}.skip{position:absolute;top:-80px;left:16px;z-index:10;background:var(--ink);color:var(--bg);padding:12px}.skip:focus{top:12px}.topbar{padding:22px 30px 19px;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--border)}.identity{display:flex;align-items:center;gap:14px}.mark{display:grid;place-items:center;width:35px;height:35px;border:1px solid #734747;color:var(--accent);font:700 17px var(--mono);border-radius:4px}h1{font-size:20px;letter-spacing:-.5px;line-height:1.3;margin:0}p{margin:0}h2,h3{line-height:1.3;margin:0}.subtitle{font-size:13px;color:var(--muted);margin-top:4px}.connection{text-align:right;font-size:12px;color:var(--muted)}.connection-state{font-size:13px;color:var(--ink);display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:3px}.dot{height:7px;width:7px;background:var(--quiet);border-radius:50%;display:inline-block}.dot.online{background:var(--green)}.dot.offline{background:var(--amber)}.banner{background:#30271b;color:#f7d5a0;border-bottom:1px solid #655336;padding:13px 30px;font-size:14px}.layout{display:grid;grid-template-columns:298px minmax(0,1fr);max-width:1600px;margin:0 auto;min-height:calc(100vh - 96px)}.sidebar{border-right:1px solid var(--border);padding:23px 17px 28px;background:#17191b}.sidebar-title{display:flex;align-items:center;justify-content:space-between;padding:0 10px;margin-bottom:14px}.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}.counter{font:12px var(--mono);color:var(--muted)}.search{display:block;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:11px 12px;min-height:44px}.task-list{display:flex;flex-direction:column;gap:4px;margin-top:14px}.task-row{width:100%;display:grid;grid-template-columns:27px minmax(0,1fr) 12px;gap:10px;text-align:left;align-items:center;background:transparent;border-color:transparent;padding:10px;min-height:63px;font-weight:400}.task-row[aria-current="true"]{background:#292b2d;border-color:#56504e}.task-number{font:13px var(--mono);color:var(--muted)}.task-row[aria-current="true"] .task-number{color:var(--accent)}.row-title{display:block;font-size:13px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}.row-status{display:block;font-size:11px;margin-top:4px;color:var(--muted)}.row-indicator{font-size:14px;color:var(--quiet)}.task-row[data-status="passed"] .row-indicator{color:var(--green)}.task-row[data-status="failed"] .row-indicator{color:var(--amber)}.task-row[data-status="error"] .row-indicator{color:var(--red)}.source-note{font-size:12px;color:var(--quiet);border-top:1px solid var(--border);margin:20px 10px 0;padding-top:16px}.mobile-picker{display:none}main{padding:27px 36px 24px;min-width:0}.progress-head{display:flex;gap:16px;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px}.progress-head strong{color:var(--ink);font-weight:600}.progress-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden}.progress-fill{height:100%;width:0;background:var(--green);transition:width .2s}.summary-counts{font-size:12px;color:var(--quiet);margin-top:9px;min-height:19px}.task-heading{margin:27px 0 21px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.task-heading h2{font-size:clamp(23px,2.1vw,31px);letter-spacing:-.7px;margin-top:7px;overflow-wrap:anywhere}.task-meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}.host{font:12px var(--mono);padding:3px 7px;border:1px solid var(--border);border-radius:3px}.status{white-space:nowrap;border:1px solid var(--border);border-radius:4px;background:var(--panel);font-size:12px;padding:6px 10px;display:inline-block}.task-aside{display:grid;justify-items:end;gap:9px;flex:0 0 auto}.stopwatch{min-width:151px;border:1px solid var(--border);border-radius:5px;background:#171a1b;padding:8px 10px;text-align:right;line-height:1.2}.stopwatch-label{display:block;color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}.stopwatch-value{display:block;font:700 21px/1.2 var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin:3px 0}.stopwatch-state{display:block;color:var(--quiet);font-size:11px}.stopwatch[data-state="running"]{border-color:#6b5531}.stopwatch[data-state="running"] .stopwatch-value{color:var(--amber)}.stopwatch[data-state="finished"] .stopwatch-value{color:var(--green)}.status[data-status="passed"]{color:var(--green);border-color:#395b43;background:#1c2a20}.status[data-status="failed"]{color:var(--amber);border-color:#6b5531;background:#2d261b}.status[data-status="error"]{color:var(--red);border-color:#734545;background:#312020}.status[data-status="in_progress"]{color:#deded9;border-color:#6d7274}.work-area{display:grid;grid-template-columns:minmax(0,1fr) 286px;gap:22px;align-items:start}.section{border:1px solid var(--border);border-radius:6px;background:var(--panel);min-width:0}.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 19px;border-bottom:1px solid var(--border)}.section h3{font-size:14px}.section-body{padding:18px 19px}.description{white-space:pre-wrap;overflow-wrap:anywhere;color:#e2e4e4;font-size:14px}.instructions{padding-left:20px;margin:15px 0 0;font-size:14px;color:#d2d6d8}.instructions li{padding:4px 0 4px 3px;white-space:pre-wrap;overflow-wrap:anywhere}.warning{margin-top:18px;border:1px solid #6a5634;border-radius:4px;background:#2c261d;color:#f0d1a0;padding:12px 13px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.warning strong{display:block;margin-bottom:3px}.terminal-guide .section-body{padding:16px}.terminal-guide h3{font-size:13px}.muted{color:var(--muted)}.small{font-size:12px}.command{margin-top:15px}.command-label{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}.command-line{display:flex;align-items:center;border:1px solid var(--border);border-radius:4px;background:var(--bg);min-width:0}.command-line code{font:12px/1.7 var(--mono);padding:10px;overflow-wrap:anywhere;min-width:0;flex:1;user-select:all}.copy{padding:0 10px;align-self:stretch;min-width:44px;min-height:44px;border:0;border-left:1px solid var(--border);background:transparent;font-size:11px;border-radius:0}.execution-target{display:flex;align-items:center;justify-content:space-between;gap:22px;border:1px solid #5a4b35;background:#211e19;border-radius:6px;padding:15px 18px;margin:18px 0 22px}.execution-target .eyebrow{margin-bottom:4px;color:var(--amber)}.execution-target strong{font-size:16px}.execution-target-note{font-size:12px;color:var(--muted);margin-top:5px;max-width:760px}.target-command{width:min(310px,100%);flex:0 0 auto}.target-command .command-label{margin-bottom:5px}.manual-note{font-size:11px;color:var(--quiet);margin-top:16px}.result-section{margin-top:22px}.result-subtitle{font-size:12px;color:var(--muted);margin-top:4px}.criteria{list-style:none;padding:0;margin:0}.criterion{display:flex;gap:10px;padding:10px 0;font-size:13px;border-bottom:1px solid #303538;overflow-wrap:anywhere}.criterion:last-child{border:0}.criterion-icon{font-weight:bold;color:var(--amber);flex-shrink:0}.criterion[data-ok="true"] .criterion-icon{color:var(--green)}.empty-note{font-size:13px;color:var(--muted);padding:4px 0}.output-label{padding:11px 19px;border-top:1px solid var(--border);background:#17191b;display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:11px}.output{font:12px/1.8 var(--mono);margin:0;background:#101213;padding:16px 19px;max-height:420px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;tab-size:4;border-radius:0 0 6px 6px;color:#d5dada}.result-footnote{font-size:12px;color:var(--quiet);margin:10px 0 0}.next-row{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:22px 0}.next-row p{font-size:12px;color:var(--muted)}.next{background:#eaded9;color:#231b18;border-color:#eaded9;font-size:13px;white-space:nowrap}.next:hover{background:#fff0e9;border-color:#fff0e9}.history{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:15px 0}.history summary{font-size:13px;cursor:pointer;min-height:30px;padding:4px 0}.history-list{list-style:none;margin:12px 0 0;padding:0}.history-item{display:flex;gap:12px;justify-content:space-between;border-top:1px solid var(--border);padding:12px 0;font-size:12px;flex-wrap:wrap}.history-item code{font-family:var(--mono)}.history-item time{color:var(--muted)}.duration-history{margin-top:18px}.duration-history-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.duration-history-head h3{margin:0;font-size:14px}.duration-history-list{list-style:none;margin:10px 0 0;padding:0;border-top:1px solid var(--border)}.duration-history-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:baseline}.duration-history-main{font:700 14px var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}.duration-history-item time{color:var(--muted);white-space:nowrap}footer{margin-top:25px;font-size:11px;color:var(--quiet);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}footer a{color:var(--muted)}.loading{border:1px dashed var(--border);padding:35px;margin:26px 0;color:var(--muted);border-radius:6px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.manual-copy{padding:13px 18px;background:var(--panel);border:1px solid var(--border);margin-top:15px;border-radius:5px}.manual-copy input{width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);font:13px var(--mono);margin:8px 0}.manual-copy-head{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+@media(max-width:1180px){main{padding:25px}.layout{grid-template-columns:265px minmax(0,1fr)}.work-area{grid-template-columns:minmax(0,1fr)}.terminal-guide .section-body{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.terminal-guide .section-body>p,.terminal-guide .ssh-command,.terminal-guide .manual-note{grid-column:1/-1}.command{margin-top:0}.task-heading{gap:12px}}
+@media(max-width:720px){.execution-target{align-items:stretch;flex-direction:column;gap:14px}.target-command{width:100%}.topbar{padding:18px;align-items:flex-start}.identity{gap:10px}.mark{display:none}h1{font-size:18px}.connection{max-width:135px;font-size:10px}.connection-state{font-size:11px}.layout{display:block}.sidebar{padding:14px 18px;border-right:0;border-bottom:1px solid var(--border)}.sidebar-title,.search,.task-list,.sidebar .source-note{display:none}.mobile-picker{display:block}.mobile-picker label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}.mobile-picker select{display:block;width:100%;max-width:100%;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:10px;min-height:44px}main{padding:21px 18px}.task-heading{flex-direction:column;margin-top:24px}.task-heading h2{font-size:25px}.task-aside{order:-1;width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.stopwatch{min-width:145px}.work-area{gap:16px}.section-head,.section-body{padding:16px}.terminal-guide .section-body{grid-template-columns:minmax(0,1fr);gap:15px}.terminal-guide .section-body>*{grid-column:1!important}.progress-head{font-size:12px;gap:8px}.next-row{align-items:flex-start;flex-direction:column;gap:12px}.next{width:100%}.banner{padding:12px 18px;font-size:13px}.output{padding:15px;font-size:11px}.output-label{padding:10px 16px}.history-item{flex-direction:column;gap:4px}.duration-history-item{align-items:flex-start;flex-direction:column;gap:4px}.duration-history-item time{white-space:normal}footer{font-size:11px}.subtitle{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Ir para a tarefa</a>
+<header class="topbar">
+  <div class="identity"><span class="mark" aria-hidden="true">r_</span><div><h1>RHCSA · Laboratório</h1><p class="subtitle">Exercícios originais · rhcsa-lab-iac</p></div></div>
+  <div class="connection"><div class="connection-state"><span id="connection-dot" class="dot" aria-hidden="true"></span><span id="connection-label">Conectando…</span></div><p id="last-fetched">Consulta automática a cada 2 s</p></div>
+</header>
+<div id="connection-error" class="banner" hidden></div>
+<div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<div class="layout">
+<aside class="sidebar" aria-label="Navegação das tarefas">
+  <div class="sidebar-title"><h2 class="eyebrow">Roteiro de tarefas</h2><span id="task-count" class="counter">—</span></div>
+  <label class="sr-only" for="search">Buscar tarefa por título, número ou host</label><input id="search" class="search" type="search" placeholder="Buscar tarefa…" autocomplete="off">
+  <nav id="task-list" class="task-list" aria-label="Tarefas na ordem do vídeo"></nav>
+  <p id="no-matches" class="empty-note" hidden>Nenhuma tarefa encontrada.</p>
+  <div class="mobile-picker"><label for="task-select">TAREFAS · ORDEM DO VÍDEO</label><select id="task-select" disabled><option>Aguardando tarefas…</option></select></div>
+  <p class="source-note">Numeração dos exercícios originais deste repositório (labs/).<br>Novos exercícios podem ser adicionados — ver docs/exercises-authoring-guide.md.</p>
+</aside>
+<main id="main" tabindex="-1">
+  <section aria-label="Progresso do laboratório"><div class="progress-head"><strong id="progress-text">Aguardando avaliações</strong><span id="progress-fraction">— / — tarefas</span></div><div id="progress" class="progress-track" role="progressbar" aria-label="Tarefas aprovadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill" class="progress-fill"></div></div><p id="summary-counts" class="summary-counts">Os resultados aparecem após executar lab grade.</p></section>
+  <div id="empty-state" class="loading">Carregando o estado do laboratório…</div>
+  <article id="task-detail" hidden aria-labelledby="task-title">
+    <div class="task-heading"><div><p id="task-number" class="eyebrow">Tarefa</p><h2 id="task-title"></h2><div class="task-meta"><span id="task-hosts" class="host"></span><span id="task-id"></span></div></div><div class="task-aside"><span id="task-status" class="status">Ainda não avaliada</span><div id="stopwatch" class="stopwatch" data-state="waiting" role="timer" aria-live="off" aria-label="Tempo da tentativa: aguardando lab start"><span class="stopwatch-label">Tempo da tentativa</span><strong id="stopwatch-value" class="stopwatch-value">00:00:00</strong><span id="stopwatch-state" class="stopwatch-state">Aguardando lab start</span></div></div></div>
+    <section class="execution-target" aria-labelledby="solve-heading"><div><p id="solve-heading" class="eyebrow">Executar a solução em</p><strong id="solve-target"></strong><p id="solve-note" class="execution-target-note"></p></div><div id="solve-command-wrap" class="target-command"><div class="command-label"><span>Acessar a VM da tarefa</span></div><div class="command-line"><code id="solve-command"></code><button class="copy" type="button" data-copy="solve-command" aria-label="Copiar comando para acessar a VM da tarefa">Copiar</button></div></div></section>
+    <div class="work-area">
+      <section class="section"><div class="section-head"><h3>Enunciado</h3><span class="eyebrow">Objetivo</span></div><div class="section-body"><p id="description" class="description"></p><ol id="instructions" class="instructions"></ol><div id="warning" class="warning" hidden><strong>Atenção neste ambiente</strong><span id="warning-text"></span></div></div></section>
+      <section class="section terminal-guide" aria-labelledby="commands-heading"><div class="section-head"><h3 id="commands-heading">Controle do lab · sempre na workstation</h3></div><div class="section-body"><p class="small muted">Entre na workstation e execute nela todos os comandos deste bloco.</p><div class="command ssh-command"><div class="command-label"><span>Entrar na workstation</span></div><div class="command-line"><code id="ssh-command">ssh {{ lab_student_user }}@{{ workstation_ip }}</code><button class="copy" type="button" data-copy="ssh-command" aria-label="Copiar comando SSH da workstation">Copiar</button></div></div><div class="command"><div class="command-label"><span>01 · Preparar</span></div><div class="command-line"><code id="start-command"></code><button class="copy" type="button" data-copy="start-command" aria-label="Copiar comando lab start">Copiar</button></div></div><div class="command"><div class="command-label"><span>02 · Avaliar</span></div><div class="command-line"><code id="grade-command"></code><button class="copy" type="button" data-copy="grade-command" aria-label="Copiar comando lab grade">Copiar</button></div></div><div class="command"><div class="command-label"><span>03 · Encerrar</span></div><div class="command-line"><code id="finish-command"></code><button class="copy" type="button" data-copy="finish-command" aria-label="Copiar comando lab finish">Copiar</button></div></div><p class="manual-note">Este painel só monitora. Nenhum comando é executado pelo navegador.</p></div></section>
+    </div>
+    <div id="manual-copy" class="manual-copy" hidden><div class="manual-copy-head"><label for="manual-copy-input">Cópia manual · selecione e copie o comando</label><button id="close-copy" type="button">Fechar</button></div><input id="manual-copy-input" readonly><p class="small muted">Use Ctrl+C ou toque e segure para copiar.</p></div>
+    <section class="section result-section" aria-labelledby="result-heading"><div class="section-head"><div><h3 id="result-heading">Resultado da avaliação</h3><p id="grade-time" class="result-subtitle">Ainda não avaliada</p></div><span id="criteria-count" class="counter">—</span></div><div class="section-body"><ul id="criteria" class="criteria"></ul><p id="criteria-empty" class="empty-note">Ainda não avaliada</p></div><div class="output-label"><span>SAÍDA DO LAB · ÚLTIMO REGISTRO</span><span id="attempts">Sem tentativas</span></div><pre id="output" class="output" tabindex="0" aria-label="Saída registrada do laboratório">Nenhuma saída registrada.</pre></section>
+    <p class="result-footnote">O grade avalia esta etapa do laboratório, não a pontuação total do conteúdo RHCSA.</p>
+    <div class="next-row"><p id="last-event">Último evento: nenhum registro.</p><button id="next-task" type="button" class="next" disabled>Próxima pendente <span aria-hidden="true">→</span></button></div>
+    <section id="duration-history" class="duration-history" aria-labelledby="duration-history-title" hidden><div class="duration-history-head"><h3 id="duration-history-title">Tempos concluídos</h3><span id="duration-history-count" class="counter"></span></div><ol id="duration-history-list" class="duration-history-list"></ol></section>
+    <details id="history" class="history"><summary id="history-title">Histórico salvo · sem eventos</summary><ol id="history-list" class="history-list"></ol></details>
+  </article>
+  <footer><p>rhcsa-lab-iac · exercícios originais, não afiliados à Red Hat.<br>Não inclui o material licenciado RH199 — ver NOTICE.md.</p><p><span id="updated-at">Estado atualizado: sem registro</span></p></footer>
+</main>
+</div>
+<script id="app">
+'use strict';
+const STATUS = Object.freeze({pending:'Ainda não avaliada',in_progress:'Em andamento',passed:'Aprovada',failed:'Revisar critérios',error:'Erro de infraestrutura'});
+function formatDuration(value) {
+  const seconds=Math.floor(Math.max(0,Number(value)||0)/1000), hours=Math.floor(seconds/3600), minutes=Math.floor(seconds%3600/60), rest=seconds%60;
+  return [hours,minutes,rest].map((part,index)=>index===0?String(part).padStart(2,'0'):String(part).padStart(2,'0')).join(':');
+}
+function attemptStopwatch(history, now) {
+  const toMs=value=>{const ms=Date.parse(value);return Number.isFinite(ms)?ms:null;};
+  const nowMs=toMs(now)||Date.now();let startedAt=null,startedMs=null,endedAt=null,endedMs=null;
+  for(const event of [...history].sort((a,b)=>(toMs(a.at)||0)-(toMs(b.at)||0))){
+    const atMs=toMs(event.at);if(atMs===null)continue;
+    if(event.action==='start' && event.returncode===0){startedAt=event.at;startedMs=atMs;endedAt=null;endedMs=null;}
+    else if(startedMs!==null && event.action==='finish'){endedAt=event.at;endedMs=atMs;}
+  }
+  if(startedMs===null)return {state:'waiting',elapsedMs:0,startedAt:null,endedAt:null};
+  if(endedMs!==null)return {state:'finished',elapsedMs:Math.max(0,endedMs-startedMs),startedAt,endedAt};
+  return {state:'running',elapsedMs:Math.max(0,nowMs-startedMs),startedAt,endedAt:null};
+}
+function completedAttempts(history) {
+  const toMs=value=>{const ms=Date.parse(value);return Number.isFinite(ms)?ms:null;};
+  const attempts=[];let current=null;
+  for(const event of [...history].sort((a,b)=>(toMs(a.at)||0)-(toMs(b.at)||0))){
+    const atMs=toMs(event.at);if(atMs===null)continue;
+    if(event.action==='start' && event.returncode===0){current={startedAt:event.at,startedMs:atMs,status:null};}
+    else if(current && event.action==='grade' && ['passed','failed','error'].includes(event.status)){current.status=event.status;}
+    else if(current && event.action==='finish'){
+      attempts.push({startedAt:current.startedAt,endedAt:event.at,elapsedMs:Math.max(0,atMs-current.startedMs),status:['passed','failed','error'].includes(event.status)?event.status:(current.status||'pending')});
+      current=null;
+    }
+  }
+  return attempts;
+}
+function validateState(value) {
+  const bad = () => { throw new Error('Resposta inválida da API'); };
+  const integer = n => Number.isInteger(n) && n >= 0;
+  const nullableText = s => s === null || typeof s === 'string';
+  const counts = x => integer(x.passed_criteria) && integer(x.total_criteria) && x.passed_criteria <= x.total_criteria;
+  if (!value || !Array.isArray(value.tasks) || !value.summary || !nullableText(value.updated_at) || !nullableText(value.next_task)) bad();
+  const ids = new Set();
+  for (const t of value.tasks) {
+    if (!t || typeof t.id !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(t.id) || ids.has(t.id) || !integer(t.number) || !Object.hasOwn(STATUS,t.status)) bad();
+    ids.add(t.id);
+    if (!['title','host','description','warning','output','solve_target','solve_command','solve_note'].every(k=>typeof t[k]==='string') || !['hosts','instructions'].every(k=>Array.isArray(t[k]) && t[k].every(s=>typeof s==='string'))) bad();
+    if (!['ssh','console'].includes(t.solve_method) || (t.solve_method==='ssh' && !/^ssh (servera|serverb)$/.test(t.solve_command)) || (t.solve_method==='console' && t.solve_command!=='')) bad();
+    if (!counts(t) || !integer(t.attempts) || !nullableText(t.last_grade_at) || !nullableText(t.last_action) || !Array.isArray(t.criteria) || !Array.isArray(t.history)) bad();
+    if (!t.criteria.every(c=>c && typeof c.ok==='boolean' && typeof c.text==='string')) bad();
+    if (!t.history.every(h=>h && typeof h.action==='string' && Object.hasOwn(STATUS,h.status) && nullableText(h.at) && (h.returncode===null || Number.isInteger(h.returncode)) && counts(h))) bad();
+  }
+  if (value.next_task !== null && !ids.has(value.next_task)) bad();
+  if (!['total',...Object.keys(STATUS)].every(k=>integer(value.summary[k])) || value.summary.total!==value.tasks.length) bad();
+  if (Object.keys(STATUS).reduce((n,k)=>n+value.summary[k],0)!==value.summary.total) bad();
+  return value;
+}
+function createDashboard(doc, env) {
+  const $ = id => doc.getElementById(id);
+  const text = (id, value) => { const el=$(id), s=String(value); if(el.textContent!==s) el.textContent=s; };
+  const node = (tag,cls,value) => {const el=doc.createElement(tag);if(cls)el.className=cls;if(value!==undefined)el.textContent=String(value);return el;};
+  const date = value => { if(!value)return 'sem registro';const d=new Date(value);return Number.isNaN(d.getTime())?'data não informada':d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+  const announce = message => text('announcer',message);
+  let data=null, selectedId=null, saved=null, renderedTask=null, listSignature='', lastAnnouncement='';
+  let rows=new Map(), options=new Map();
+  function refreshStopwatch() {
+    const task=data?.tasks.find(item=>item.id===selectedId);
+    const timer=attemptStopwatch(task?.history||[],env.now?env.now():new Date());
+    const state=timer.state==='running'?'Em andamento':timer.state==='finished'?'Encerrada':'Aguardando lab start';
+    text('stopwatch-value',formatDuration(timer.elapsedMs));text('stopwatch-state',state);
+    $('stopwatch').dataset.state=timer.state;
+    $('stopwatch').setAttribute('aria-label',`Tempo da tentativa: ${formatDuration(timer.elapsedMs)}. ${state}.`);
+  }
+  try { saved=env.storage.getItem('rhcsa.selectedTask'); } catch (_) { /* Private browsing may block storage. */ }
+  function select(id) {
+    if (!data || !data.tasks.some(t=>t.id===id))return;
+    selectedId=id;
+    try {env.storage.setItem('rhcsa.selectedTask',id);} catch (_) {}
+    render();
+  }
+  function filter() {
+    const term=$('search').value.toLocaleLowerCase('pt-BR').trim();let visible=0;
+    for(const t of data?.tasks || []){const match=`${t.number} ${t.title} ${t.id} ${t.hosts.join(' ')}`.toLocaleLowerCase('pt-BR').includes(term);rows.get(t.id).button.hidden=!match;if(match)visible++;}
+    $('no-matches').hidden=!data?.tasks.length || visible>0;
+  }
+  function render() {
+    const summary=data.summary, total=summary.total, percent=total?Math.round(summary.passed/total*100):0;
+    text('progress-text',`${summary.passed} ${summary.passed===1?'tarefa aprovada':'tarefas aprovadas'}`);
+    text('progress-fraction',`${summary.passed} / ${total} tarefas`);
+    $('progress-fill').style.width=`${percent}%`;$('progress').setAttribute('aria-valuenow',percent);
+    text('summary-counts',`${summary.pending} pendentes · ${summary.in_progress} em andamento · ${summary.failed} para revisar · ${summary.error} com erro`);
+    text('task-count',`${total} tarefas`);text('updated-at',`Estado atualizado: ${date(data.updated_at)}`);
+    const signature=data.tasks.map(t=>t.id).join('|');
+    if(signature!==listSignature){
+      const nextRows=new Map(),nextOptions=new Map();
+      for(const t of data.tasks){
+        let row=rows.get(t.id);
+        if(!row){
+          const button=node('button','task-row');button.type='button';
+          const number=node('span','task-number'),body=node('span'),title=node('span','row-title'),status=node('span','row-status'),indicator=node('span','row-indicator');indicator.setAttribute('aria-hidden','true');
+          body.append(title,status);button.append(number,body,indicator);button.addEventListener('click',()=>select(t.id));
+          row={button,number,title,status,indicator};
+        }
+        nextRows.set(t.id,row);const option=options.get(t.id)||node('option');option.value=t.id;nextOptions.set(t.id,option);
+      }
+      rows=nextRows;options=nextOptions;$('task-list').replaceChildren(...Array.from(rows.values(),r=>r.button));$('task-select').replaceChildren(...options.values());listSignature=signature;
+    }
+    for(const t of data.tasks){
+      const r=rows.get(t.id);r.number.textContent=String(t.number).padStart(2,'0');r.title.textContent=t.title;r.status.textContent=STATUS[t.status];r.indicator.textContent=t.status==='passed'?'✓':t.status==='error'?'!':t.status==='failed'?'!':t.status==='in_progress'?'◉':'·';r.button.dataset.status=t.status;r.button.setAttribute('aria-current',String(t.id===selectedId));
+      const label=`${String(t.number).padStart(2,'0')} · ${t.title} · ${STATUS[t.status]}`;
+      r.button.setAttribute('aria-label',label);if(options.get(t.id).textContent!==label)options.get(t.id).textContent=label;
+    }
+    $('task-select').disabled=!total;if($('task-select').value!==selectedId)$('task-select').value=selectedId||'';filter();
+    const t=data.tasks.find(t=>t.id===selectedId);
+    $('empty-state').hidden=Boolean(t);$('task-detail').hidden=!t;
+    if(!t){text('empty-state','Nenhuma tarefa disponível no catálogo.');renderedTask=null;return;}
+    const taskSnapshot=JSON.stringify(t);
+    if(taskSnapshot!==renderedTask){
+      text('task-number',`Tarefa ${String(t.number).padStart(2,'0')} · roteiro do vídeo`);text('task-title',t.title);text('task-id',t.id);text('task-hosts',`Hosts avaliados: ${t.hosts.length?t.hosts.join(' + '):t.host}`);
+      text('solve-target',t.solve_target);text('solve-note',t.solve_note);text('solve-command',t.solve_command);$('solve-command-wrap').hidden=t.solve_method!=='ssh';
+      text('task-status',STATUS[t.status]);$('task-status').dataset.status=t.status;text('description',t.description||'Enunciado não informado.');
+      $('instructions').replaceChildren(...t.instructions.map(line=>node('li','',line)));$('instructions').hidden=!t.instructions.length;
+      $('warning').hidden=!t.warning;text('warning-text',t.warning);
+      for(const action of ['start','grade','finish'])text(`${action}-command`,`lab ${action} ${t.id}`);
+      text('grade-time',t.last_grade_at?`Último grade · ${date(t.last_grade_at)}`:'Ainda não avaliada');
+      text('criteria-count',t.total_criteria?`${t.passed_criteria} / ${t.total_criteria} critérios`:'—');
+      $('criteria').replaceChildren(...t.criteria.map(c=>{const li=node('li','criterion');li.dataset.ok=String(c.ok);const icon=node('span','criterion-icon',c.ok?'✓':'!');icon.setAttribute('aria-label',c.ok?'Aprovado':'Não aprovado');li.append(icon,node('span','',c.text));return li;}));
+      $('criteria-empty').hidden=Boolean(t.criteria.length);text('criteria-empty',t.last_grade_at?'Nenhum critério individual registrado.':'Ainda não avaliada');
+      const output=$('output'),scroll=output.scrollTop;text('output',t.output||'Nenhuma saída registrada.');output.scrollTop=scroll;
+      text('attempts',t.attempts?`${t.attempts} ${t.attempts===1?'tentativa':'tentativas'}`:'Sem tentativas');
+      const events=[...t.history].sort((a,b)=>(Date.parse(b.at)||0)-(Date.parse(a.at)||0)),last=events[0];
+      text('last-event',last?`Último evento: lab ${last.action} · ${date(last.at)}`:t.last_action?`Último evento: ${t.last_action}`:'Último evento: nenhum registro.');
+      text('history-title',`Histórico salvo · ${events.length?`${events.length} ${events.length===1?'evento':'eventos'}`:'sem eventos'}`);
+      $('history-list').replaceChildren(...events.map(h=>{const li=node('li','history-item'),main=node('span'),when=node('time','',date(h.at));main.append(node('code','',`lab ${h.action}`),node('span','',` · ${STATUS[h.status]} · ${h.passed_criteria}/${h.total_criteria} critérios · saída ${h.returncode===null?'não registrada':h.returncode}`));if(h.at)when.setAttribute('datetime',h.at);li.append(main,when);return li;}));
+      const completed=[...completedAttempts(t.history)].reverse();
+      $('duration-history').hidden=!completed.length;
+      text('duration-history-count',`${completed.length} ${completed.length===1?'tentativa':'tentativas'}`);
+      $('duration-history-list').replaceChildren(...completed.map(attempt=>{const li=node('li','duration-history-item'),main=node('span','duration-history-main',`${formatDuration(attempt.elapsedMs)} · ${STATUS[attempt.status]}`),when=node('time','',date(attempt.endedAt));when.setAttribute('datetime',attempt.endedAt);li.append(main,when);return li;}));
+      const notice=`Tarefa ${t.number}: ${STATUS[t.status]}. ${t.passed_criteria} de ${t.total_criteria} critérios.`;
+      if(notice!==lastAnnouncement){announce(notice);lastAnnouncement=notice;}
+      renderedTask=taskSnapshot;
+    }
+    refreshStopwatch();
+    $('next-task').disabled=!data.next_task || data.next_task===selectedId;
+    $('next-task').setAttribute('title',data.next_task===selectedId?'Você já está na próxima tarefa pendente.':data.next_task?'Abrir a próxima pendente sem executar comandos.':'Nenhuma tarefa pendente.');
+  }
+  function applyState(value) {
+    data=validateState(value);
+    if(!data.tasks.some(t=>t.id===selectedId))selectedId=data.tasks.some(t=>t.id===saved)?saved:data.next_task||data.tasks[0]?.id||null;
+    saved=null;render();return selectedId;
+  }
+  $('search').addEventListener('input',filter);$('task-select').addEventListener('change',event=>select(event.target.value));$('next-task').addEventListener('click',()=>{if(data?.next_task)select(data.next_task);});
+  let busy=false, running=false, pollTimer=null, stopwatchTimer=null, requestController=null, connection=null;
+  const later=(fn,delay)=>(env.setTimeout||setTimeout)(fn,delay);
+  const cancel=id=>(env.clearTimeout||clearTimeout)(id);
+  async function poll() {
+    if(busy)return;busy=true;
+    const Controller=env.AbortController;
+    requestController=Controller?new Controller():null;
+    const timeout=later(()=>requestController?.abort(),8000);
+    try {
+      const response=await env.fetch('/api/state',{method:'GET',cache:'no-store',headers:{Accept:'application/json'},...(requestController?{signal:requestController.signal}:{})});
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      applyState(await response.json());
+      const fetched=env.now?env.now():new Date();
+      text('last-fetched',`Última consulta: ${fetched.toLocaleTimeString('pt-BR')}`);text('connection-label','Monitorando');$('connection-dot').className='dot online';$('connection-error').hidden=true;
+      if(connection===false)announce('Conexão restabelecida. Estado atualizado.');connection=true;
+    } catch(error) {
+      const invalid=error.message?.includes('inválida') || error.name==='SyntaxError';
+      const reason=invalid?'Resposta inválida da API.':'Não foi possível consultar o laboratório.';
+      const message=`${reason} ${data?'Dados exibidos podem estar desatualizados.':'Nenhum resultado carregado.'} Nova tentativa automática a cada 2 s.`;
+      text('connection-label','Sem atualização');$('connection-dot').className='dot offline';text('connection-error',message);$('connection-error').hidden=false;
+      if(!data)text('empty-state','Não foi possível carregar as tarefas. Aguardando conexão com o laboratório.');
+      if(connection!==false)announce(message);connection=false;
+    } finally {cancel(timeout);busy=false;requestController=null;}
+  }
+  async function tick(){await poll();if(running)pollTimer=later(tick,2000);}
+  function tickStopwatch(){refreshStopwatch();if(running)stopwatchTimer=later(tickStopwatch,1000);}
+  async function start(){if(running)return;running=true;tickStopwatch();await tick();}
+  function stop(){running=false;if(pollTimer!==null)cancel(pollTimer);if(stopwatchTimer!==null)cancel(stopwatchTimer);requestController?.abort();}
+  let copyOrigin=null;
+  async function copyText(value) {
+    copyOrigin=doc.activeElement;
+    try {
+      if(env.navigator?.clipboard?.writeText){await env.navigator.clipboard.writeText(value);announce('Comando copiado. Execute manualmente no terminal.');return 'clipboard';}
+    } catch (_) { /* Plain HTTP and denied permissions use the fallback below. */ }
+    const temporary=node('textarea');temporary.value=value;temporary.style.position='fixed';temporary.style.opacity='0';temporary.style.top='0';temporary.setAttribute('aria-label','Comando para copiar');doc.body.append(temporary);
+    let copied=false;
+    try {temporary.focus();temporary.select();copied=Boolean(doc.execCommand && doc.execCommand('copy'));} catch (_) {} finally {temporary.remove();copyOrigin?.focus({preventScroll:true});}
+    if(copied){announce('Comando copiado. Execute manualmente no terminal.');return 'legacy';}
+    $('manual-copy').hidden=false;$('manual-copy-input').value=value;$('manual-copy-input').focus({preventScroll:true});$('manual-copy-input').select();announce('Cópia automática indisponível. Use o campo de cópia manual.');return 'manual';
+  }
+  for(const button of doc.querySelectorAll('[data-copy]'))button.addEventListener('click',async()=>{
+    const original=button.textContent,method=await copyText($(button.dataset.copy).textContent);
+    if(method!=='manual'){button.textContent='Copiado';later(()=>{button.textContent=original;},1500);}
+  });
+  $('close-copy').addEventListener('click',()=>{$('manual-copy').hidden=true;copyOrigin?.focus({preventScroll:true});});
+  return {applyState,select,poll,start,stop,refreshStopwatch,copyText,get selectedId(){return selectedId;}};
+}
+if (typeof module !== 'undefined') module.exports={validateState,createDashboard,attemptStopwatch,completedAttempts,formatDuration};
+if (typeof document !== 'undefined') {
+  const storage={getItem:key=>window.localStorage.getItem(key),setItem:(key,value)=>window.localStorage.setItem(key,value)};
+  const dashboard=createDashboard(document,{storage,navigator:window.navigator,fetch:window.fetch.bind(window),AbortController:window.AbortController,now:()=>new Date()});
+  dashboard.start();
+  window.addEventListener('pagehide',()=>dashboard.stop());
+  window.addEventListener('pageshow',()=>dashboard.start());
+}
+</script>
+</body>
+</html>

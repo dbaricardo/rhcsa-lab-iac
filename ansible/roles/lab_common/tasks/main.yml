@@ -1,0 +1,44 @@
+---
+# Aplicado a servera e serverb (grupo lab_hosts): instala o dispatcher local
+# (lab-remote), o helper de disco (lab-common.sh) e só os scripts dos
+# exercícios cujo `hosts` (em labs/*/meta.json, agregado em labs/catalog.json
+# por scripts/build-catalog.py) inclui este host.
+
+- name: Instalar lab-common.sh (helpers de disco -- resolve_disco/disco_do_so)
+  ansible.builtin.copy:
+    src: lab-common.sh
+    dest: /usr/local/lib/lab-common.sh
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Instalar dispatcher local lab-remote
+  ansible.builtin.copy:
+    src: lab-remote
+    dest: /usr/local/bin/lab-remote
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Carregar catálogo de exercícios (gerado por scripts/build-catalog.py)
+  ansible.builtin.set_fact:
+    lab_catalog_tasks: "{{ lookup('file', playbook_dir + '/../labs/catalog.json') | from_json }}"
+
+- name: Garantir diretório base dos scripts de lab
+  ansible.builtin.file:
+    path: /usr/local/lib/lab-scripts
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Instalar exercícios atribuídos a este host
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../labs/{{ item.id }}/"
+    dest: "/usr/local/lib/lab-scripts/{{ item.id }}/"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ lab_catalog_tasks | selectattr('hosts', 'contains', inventory_hostname) | list }}"
+  loop_control:
+    label: "{{ item.id }}"

@@ -1,0 +1,70 @@
+---
+# Só roda no host definido em machines.yaml -> dashboard.host (workstation).
+# Porta o backend.py real de rhcsa-lab-dashboard/, generalizando IP/host e
+# origem do firewalld (sem nada hardcoded do homelab original).
+
+- name: Criar diretório de instalação do dashboard (somente leitura pelo serviço)
+  ansible.builtin.file:
+    path: /opt/rhcsa-lab-dashboard
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copiar backend.py (código original, sem alterações)
+  ansible.builtin.copy:
+    src: backend.py
+    dest: /opt/rhcsa-lab-dashboard/backend.py
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Renderizar index.html (só generaliza IP/textos, lógica idêntica ao original)
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: /opt/rhcsa-lab-dashboard/index.html
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Copiar catalog.json gerado por scripts/build-catalog.py
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../labs/catalog.json"
+    dest: /opt/rhcsa-lab-dashboard/catalog.json
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Criar diretório de dados do dashboard (SQLite, dono do student)
+  ansible.builtin.file:
+    path: /var/lib/rhcsa-lab-dashboard
+    state: directory
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0700"
+
+- name: Instalar unidade systemd do dashboard
+  ansible.builtin.template:
+    src: rhcsa-lab-dashboard.service.j2
+    dest: /etc/systemd/system/rhcsa-lab-dashboard.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reiniciar dashboard
+
+- name: Abrir a porta do dashboard só para a origem configurada
+  ansible.posix.firewalld:
+    rich_rule: >-
+      rule family="ipv4"
+      source address="{{ dashboard_allowed_source }}"
+      port port="{{ dashboard_port }}" protocol="tcp" accept
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Habilitar e iniciar o dashboard
+  ansible.builtin.systemd:
+    name: rhcsa-lab-dashboard
+    enabled: true
+    state: started
+    daemon_reload: true

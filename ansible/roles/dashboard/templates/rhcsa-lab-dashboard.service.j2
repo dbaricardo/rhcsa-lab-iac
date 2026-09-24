@@ -1,0 +1,31 @@
+[Unit]
+Description=RHCSA lab dashboard (read-only, rede privada do lab)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ lab_student_user }}
+Group={{ lab_student_user }}
+WorkingDirectory=/opt/rhcsa-lab-dashboard
+ExecStart=/usr/bin/python3 /opt/rhcsa-lab-dashboard/backend.py --host {{ dashboard_bind_host | default('0.0.0.0') }} --port {{ dashboard_port }} --data-dir /var/lib/rhcsa-lab-dashboard --catalog /opt/rhcsa-lab-dashboard/catalog.json --static-dir /opt/rhcsa-lab-dashboard
+Restart=on-failure
+RestartSec=3
+StateDirectory=rhcsa-lab-dashboard
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET
+CapabilityBoundingSet=
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

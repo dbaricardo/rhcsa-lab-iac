@@ -1,0 +1,7 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+# Gerenciado pelo Ansible (role common) -- não editar manualmente.
+{% for name, spec in lab_machines.items() %}
+{{ spec.ip }}   {{ name }}.{{ lab_domain }} {{ name }}
+{% endfor %}

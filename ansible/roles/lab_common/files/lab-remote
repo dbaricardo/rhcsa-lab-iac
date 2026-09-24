@@ -1,0 +1,30 @@
+#!/bin/bash
+# Dispatcher LOCAL de labs, instalado em servera/serverb. Chamado via SSH
+# pelo dispatcher remoto da workstation (/usr/local/bin/lab) -- nunca deve
+# ser chamado diretamente pelo estudante (ele sempre usa `lab` na
+# workstation, que sabe pra qual host delegar cada exercício).
+set -euo pipefail
+
+ACTION="${1:-}"
+TASK_ID="${2:-}"
+
+case "$ACTION" in
+  start|grade|finish) ;;
+  *)
+    echo "uso: lab-remote <start|grade|finish> <id>" >&2
+    exit 2
+    ;;
+esac
+
+if [ -z "$TASK_ID" ]; then
+  echo "uso: lab-remote <start|grade|finish> <id>" >&2
+  exit 2
+fi
+
+SCRIPT="/usr/local/lib/lab-scripts/${TASK_ID}/${ACTION}.sh"
+if [ ! -x "$SCRIPT" ]; then
+  echo "lab-remote: '${TASK_ID}' não encontrado neste host (${SCRIPT} ausente)." >&2
+  exit 2
+fi
+
+exec "$SCRIPT"

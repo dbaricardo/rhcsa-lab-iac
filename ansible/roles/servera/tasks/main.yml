@@ -1,0 +1,15 @@
+---
+# servera não tem necessidades além de common + lab_common (dispatcher local
+# + exercícios atribuídos a ela). Este role existe para paralelismo com
+# serverb e como ponto de extensão futuro (specs em machines.yaml já
+# preveem, por exemplo, discos extra por host caso um exercício futuro
+# precise em servera também).
+
+- name: Instalar pacotes de servidor comuns aos exercícios
+  ansible.builtin.dnf:
+    name:
+      - firewalld
+      - policycoreutils-python-utils
+      - setroubleshoot-server
+      - nfs-utils
+    state: present

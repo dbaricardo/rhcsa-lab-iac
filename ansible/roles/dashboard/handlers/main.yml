@@ -1,0 +1,6 @@
+---
+- name: reiniciar dashboard
+  ansible.builtin.systemd:
+    name: rhcsa-lab-dashboard
+    state: restarted
+    daemon_reload: true
