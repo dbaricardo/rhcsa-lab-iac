@@ -7,6 +7,7 @@ export
 endif
 
 .PHONY: help check-env build-box up status destroy reprovision \
+	reprovision-offline offline-repo-stop \
 	ssh-workstation ssh-servera ssh-serverb lint catalog test-dashboard
 
 help: ## Lista os targets disponíveis
@@ -36,6 +37,13 @@ status: ## Mostra o estado das VMs e a URL do dashboard
 
 reprovision: catalog ## Roda o Ansible novamente sem recriar as VMs
 	@vagrant provision
+
+reprovision-offline: catalog ## Roda o Ansible SEM subscription real (modo teste, ver docs/troubleshooting.md)
+	@bash scripts/offline-repo.sh start
+	@LAB_OFFLINE_REPO_URL="http://192.168.56.1:8080" vagrant provision
+
+offline-repo-stop: ## Para o servidor HTTP do modo offline e desmonta a ISO
+	@bash scripts/offline-repo.sh stop
 
 destroy: ## Destroi as 3 VMs (não remove o box)
 	@vagrant destroy -f

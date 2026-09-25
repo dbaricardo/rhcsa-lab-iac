@@ -1,0 +1,10 @@
+---
+# URL base de um repositório BaseOS/AppStream servido via HTTP (ex.:
+# http://192.168.56.1:8080), montado a partir da DVD ISO por
+# scripts/offline-repo.sh. Vazio (padrão) = fluxo normal com subscription
+# manual, ver docs/tutorial-fim-a-fim.md passo 8.
+#
+# Uso: apenas para ambiente de TESTE/aceitação sem subscription real (ver
+# docs/troubleshooting.md, seção "Modo offline via ISO"). Não é um substituto
+# de produção: não traz updates/erratas, só o conteúdo congelado da ISO.
+lab_offline_repo_url: ""

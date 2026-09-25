@@ -93,6 +93,10 @@ Vagrant.configure('2') do |config|
             workstation_ip: MACHINES.dig('workstation', 'ip'),
             servera_ip: MACHINES.dig('servera', 'ip'),
             serverb_ip: MACHINES.dig('serverb', 'ip'),
+            # Modo TESTE/aceitação sem subscription real, ver
+            # scripts/offline-repo.sh e docs/troubleshooting.md ("Modo
+            # offline via ISO"). Vazio por padrão = fluxo normal.
+            lab_offline_repo_url: ENV.fetch('LAB_OFFLINE_REPO_URL', ''),
           }
         end
       end

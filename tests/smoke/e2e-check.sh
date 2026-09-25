@@ -13,10 +13,15 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "$ROOT_DIR"
+cd "$ROOT_DIR" || exit 1
 
 EXAMPLE_LAB="users-groups-01"
 FAILURES=0
+
+# Diretório temporário isolado por execução -- evita colidir com uma outra
+# execução concorrente (ou anterior, interrompida) e não deixa lixo em /tmp.
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/rhcsa-lab-smoke.XXXXXX")"
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 info() { echo "==> $1"; }
 ok()   { echo "  [ok]    $1"; }
@@ -75,17 +80,17 @@ fi
 # --- 3. lab list via SSH na workstation -------------------------------------
 info "vagrant ssh workstation -c 'lab list'"
 
-if ! vagrant ssh workstation -c 'lab list' >/tmp/rhcsa-lab-smoke-list.out 2>&1; then
-  cat /tmp/rhcsa-lab-smoke-list.out >&2
+LIST_OUT="$WORK_DIR/list.out"
+if ! vagrant ssh workstation -c 'lab list' >"$LIST_OUT" 2>&1; then
+  cat "$LIST_OUT" >&2
   die_infra "'lab list' falhou dentro da workstation"
 fi
 ok "'lab list' executou com sucesso"
 
-if ! grep -q "$EXAMPLE_LAB" /tmp/rhcsa-lab-smoke-list.out; then
+if ! grep -q "$EXAMPLE_LAB" "$LIST_OUT"; then
   die_infra "'lab list' não listou o exercício de exemplo '$EXAMPLE_LAB' -- catalog.json desatualizado? rode 'make catalog'"
 fi
 ok "'$EXAMPLE_LAB' aparece no catálogo"
-rm -f /tmp/rhcsa-lab-smoke-list.out
 
 # --- 4. ciclo start/grade/finish do exercício de exemplo --------------------
 # Só confirma que o ciclo completo roda sem erro de infraestrutura -- não
@@ -96,15 +101,14 @@ rm -f /tmp/rhcsa-lab-smoke-list.out
 # não o resultado do exercício em si.
 for action in start grade finish; do
   info "vagrant ssh workstation -c 'lab $action $EXAMPLE_LAB'"
-  if vagrant ssh workstation -c "lab $action $EXAMPLE_LAB" >/tmp/rhcsa-lab-smoke-${action}.out 2>&1; then
+  ACTION_OUT="$WORK_DIR/${action}.out"
+  if vagrant ssh workstation -c "lab $action $EXAMPLE_LAB" >"$ACTION_OUT" 2>&1; then
     ok "'lab $action $EXAMPLE_LAB' executou com sucesso (código 0)"
   else
     RC=$?
-    cat "/tmp/rhcsa-lab-smoke-${action}.out" >&2
-    rm -f "/tmp/rhcsa-lab-smoke-${action}.out"
+    cat "$ACTION_OUT" >&2
     die_infra "'lab $action $EXAMPLE_LAB' saiu com código $RC (esperado 0 -- ver saída acima)"
   fi
-  rm -f "/tmp/rhcsa-lab-smoke-${action}.out"
 done
 
 echo ""

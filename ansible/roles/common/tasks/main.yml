@@ -16,18 +16,46 @@
     mode: "0440"
     validate: "visudo -cf %s"
 
+# Modo TESTE/aceitação, sem subscription real (ver docs/troubleshooting.md,
+# seção "Modo offline via ISO", e scripts/offline-repo.sh): quando
+# lab_offline_repo_url estiver preenchida, aponta BaseOS/AppStream para o
+# HTTP servido a partir da DVD ISO montada no host, em vez dos repos da Red
+# Hat CDN -- não substitui a subscription real (sem updates/erratas), só
+# existe para validar o resto do provisionamento (pacotes/roles/exercícios)
+# sem depender de uma conta Red Hat.
+- name: "[modo offline] Configurar repo BaseOS a partir da ISO"
+  ansible.builtin.yum_repository:
+    name: lab-offline-baseos
+    description: "RHCSA lab (offline/teste) - BaseOS"
+    baseurl: "{{ lab_offline_repo_url }}/BaseOS"
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+  when: lab_offline_repo_url | length > 0
+
+- name: "[modo offline] Configurar repo AppStream a partir da ISO"
+  ansible.builtin.yum_repository:
+    name: lab-offline-appstream
+    description: "RHCSA lab (offline/teste) - AppStream"
+    baseurl: "{{ lab_offline_repo_url }}/AppStream"
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+  when: lab_offline_repo_url | length > 0
+
 # A subscription NÃO é registrada automaticamente por este projeto (nem no
 # kickstart do box golden, nem aqui) -- registrar as 3 VMs clonadas com a
 # mesma identidade faria elas compartilharem o mesmo consumer ID na Red Hat,
 # o que já causou conflito real. É passo manual do usuário por SSH em cada
 # VM (ver docs/tutorial-fim-a-fim.md, passo 8). Falhar cedo aqui, antes de
 # qualquer `dnf install`, evita um erro genérico de "repositório vazio" bem
-# mais adiante em servera/serverb/workstation.
+# mais adiante em servera/serverb/workstation. Pulado inteiramente no modo
+# offline acima, que é sua própria forma explícita de dizer "sem subscription
+# de propósito".
 - name: Verificar se a subscription já foi registrada manualmente
   ansible.builtin.command: subscription-manager identity
   register: lab_subscription_identity
   changed_when: false
   failed_when: false
+  when: lab_offline_repo_url | length == 0
 
 - name: Falhar cedo se {{ inventory_hostname }} não estiver registrado na subscription
   ansible.builtin.assert:
@@ -40,6 +68,7 @@
       --activationkey=<ACTIVATION_KEY> (ver docs/tutorial-fim-a-fim.md,
       passo 8). Depois rode 'make reprovision'.
     success_msg: "{{ inventory_hostname }}: subscription registrada, seguindo."
+  when: lab_offline_repo_url | length == 0
 
 - name: Ler topologia de machines.yaml (para /etc/hosts)
   ansible.builtin.set_fact:

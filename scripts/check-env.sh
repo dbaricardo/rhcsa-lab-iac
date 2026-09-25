@@ -29,6 +29,7 @@ check_bin ansible "pacote 'ansible' ou 'ansible-core'"
 check_bin envsubst "pacote 'gettext'"
 check_bin python3 "pacote 'python3'"
 check_bin ssh-keygen "pacote 'openssh-clients'"
+check_bin xorriso "pacote 'xorriso' (usado para validar RHEL_ISO_PATH abaixo)"
 
 echo ""
 echo "== Plugin vagrant-libvirt =="
@@ -83,6 +84,22 @@ if [ -f .env ]; then
   if [ -n "${RHEL_ISO_PATH:-}" ]; then
     if [ -f "$RHEL_ISO_PATH" ]; then
       ok "RHEL_ISO_PATH existe ($RHEL_ISO_PATH)"
+      # A "boot ISO" (netinstall) não traz /BaseOS nem /AppStream -- só a
+      # DVD ISO completa tem os pacotes que o kickstart (%packages) e os
+      # roles Ansible (dnf install) precisam. Erro comum: baixar a boot ISO
+      # por engano, achando que "instala do mesmo jeito" (só que sem rede
+      # de saída para os repos da Red Hat, que é exatamente o caso deste
+      # projeto, o instalador trava/falha silenciosamente bem mais adiante).
+      if command -v xorriso >/dev/null 2>&1; then
+        if xorriso -indev "$RHEL_ISO_PATH" -find /BaseOS/repodata -type d \
+             2>/dev/null | grep -q repodata \
+           && xorriso -indev "$RHEL_ISO_PATH" -find /AppStream/repodata -type d \
+             2>/dev/null | grep -q repodata; then
+          ok "RHEL_ISO_PATH é a DVD ISO completa (BaseOS/ e AppStream/ presentes)"
+        else
+          fail "RHEL_ISO_PATH não parece ser a DVD ISO completa (sem /BaseOS/repodata ou /AppStream/repodata) — baixe a 'DVD ISO' na sua conta Red Hat Developer, não a 'boot ISO'"
+        fi
+      fi
     else
       fail "RHEL_ISO_PATH não existe no disco: $RHEL_ISO_PATH"
     fi
