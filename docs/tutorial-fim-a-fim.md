@@ -26,12 +26,17 @@ Se não retornar nada, habilite VT-x/AMD-V na BIOS/UEFI antes de continuar.
 
 ```bash
 sudo dnf install -y @virtualization libvirt libvirt-daemon-kvm \
-  virt-install libguestfs-tools qemu-img ansible-core gettext python3 \
-  libvirt-devel gcc ruby-devel libxml2-devel pkgconf-pkg-config
+  virt-install guestfs-tools qemu-img ansible-core gettext python3 \
+  libvirt-devel gcc ruby-devel libxml2-devel pkgconf-pkg-config xorriso
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt "$USER"
 ```
+
+> O pacote que fornece `virt-customize` mudou de nome no RHEL/Rocky 10:
+> `guestfs-tools` (não mais `libguestfs-tools`, nome usado em versões
+> anteriores e ainda válido em Fedora/CentOS Stream mais recentes -- se
+> `guestfs-tools` não existir no seu repositório, tente `libguestfs-tools`).
 
 Instale o Vagrant a partir do repositório oficial da HashiCorp (não está nos
 repositórios padrão do Fedora):
@@ -47,7 +52,7 @@ sudo dnf install -y vagrant
 sudo apt update
 sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients \
   virtinst libguestfs-tools qemu-utils ansible gettext-base python3 \
-  libvirt-dev ruby-dev build-essential pkg-config libxslt-dev libxml2-dev zlib1g-dev
+  libvirt-dev ruby-dev build-essential pkg-config libxslt-dev libxml2-dev zlib1g-dev xorriso
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt,kvm "$USER"
@@ -238,6 +243,13 @@ vagrant ssh serverb     -c 'sudo subscription-manager register --org=<ORG_ID> --
 Se você tiver poucos slots disponíveis na sua subscription gratuita, veja
 [docs/troubleshooting.md](troubleshooting.md) (seção "Limite de sistemas
 simultâneos").
+
+> **Só testando a infraestrutura, sem gastar um slot de subscription?** Existe
+> um modo alternativo, `make reprovision-offline`, que serve os pacotes a
+> partir da própria DVD ISO em vez do registro manual acima -- ver
+> [docs/troubleshooting.md](troubleshooting.md#modo-offline-via-iso). Não é
+> um substituto de produção (sem updates/erratas) e pula este passo 8
+> inteiramente.
 
 ## 9. `make reprovision`
 

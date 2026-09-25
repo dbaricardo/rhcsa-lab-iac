@@ -18,7 +18,8 @@ do zero até resolver o primeiro exercício.
 No host onde as VMs vão rodar (Linux com suporte a KVM):
 
 - **KVM/libvirt** habilitado (`/dev/kvm` presente, virtualização ligada na BIOS/UEFI)
-- **virt-install** e **libguestfs-tools** (para construir o box golden)
+- **virt-install** e **guestfs-tools** (`libguestfs-tools` em Debian/Ubuntu
+  e em distribuições mais antigas) para construir o box golden
 - **Vagrant** + plugin **vagrant-libvirt**
 - **Ansible** (`ansible-core`) + as collections em `ansible/requirements.yml`
   (`ansible-galaxy collection install -r ansible/requirements.yml`)

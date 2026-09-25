@@ -21,7 +21,7 @@ check_bin() {
 
 echo "== Binários necessários =="
 check_bin virt-install "pacote 'virt-install' (libvirt-client / virtinst)"
-check_bin virt-customize "pacote 'libguestfs-tools'"
+check_bin virt-customize "pacote 'guestfs-tools' no RHEL/Rocky/Fedora (dnf) -- em Debian/Ubuntu (apt) o nome ainda é 'libguestfs-tools'"
 check_bin qemu-img "pacote 'qemu-img'"
 check_bin virsh "pacote 'libvirt-client'"
 check_bin vagrant "https://www.vagrantup.com/downloads"
