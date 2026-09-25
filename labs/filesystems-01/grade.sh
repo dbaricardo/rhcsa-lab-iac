@@ -1,11 +1,20 @@
 #!/bin/bash
 # Não-destrutivo: só consulta o estado, nunca altera nada.
+#
+# Usa disco_por_tamanho() (não resolve_disco()) de propósito: neste ponto o
+# disco já foi particionado pelo estudante (é o próprio exercício), e
+# resolve_disco() exige explicitamente um disco CRU (sem partições) -- ela
+# serve para start.sh escolher o disco, não para reencontrá-lo depois de
+# particionado. Usar resolve_disco() aqui faria este grade.sh reportar
+# FALHOU sempre, mesmo com o exercício resolvido corretamente (mesma classe
+# de bug já documentada em docs/troubleshooting.md e corrigida em
+# labs/storage-lvm-01/finish.sh).
 set -uo pipefail
 source /usr/local/lib/lab-common.sh
 
 pass=true
 
-disco="$(resolve_disco 1 2>/dev/null)"
+disco="$(disco_por_tamanho 1 2>/dev/null)"
 if [ -z "${disco:-}" ]; then
   echo "FALHOU: não foi possível identificar o disco de ~1GB (vmdata2)"
   echo "RESULTADO: FALHOU"
