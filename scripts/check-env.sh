@@ -108,6 +108,52 @@ else
   fail ".env não encontrado — rode: cp .env.example .env"
 fi
 
+# qemu:///system roda os domínios como o usuário de sistema 'qemu' (não
+# root), mesmo quando virt-install/build-box.sh são executados como root --
+# esse usuário precisa de permissão de busca (x) em TODO diretório pai até
+# o repositório e até a ISO, senão virt-install só falha bem no final da
+# instalação ("Cannot access storage file... Permission denied"), depois de
+# já ter gastado minutos baixando vmlinuz/initrd. Bug real: `/root` (e em
+# alguns distros o próprio $HOME) vem com modo 0700 por padrão, o que
+# bloqueia isso silenciosamente.
+is_world_executable() {
+  local mode
+  mode="$(stat -c '%a' "$1" 2>/dev/null)" || return 1
+  local other="${mode: -1}"
+  (( other & 1 ))
+}
+
+# ACL (setfacl -m u:qemu:--x, a correção que esta checagem recomenda) não
+# aparece em `stat %a` -- é uma camada de controle de acesso adicional, não
+# refletida no modo octal tradicional. Sem checar isso aqui também, esta
+# função reportaria FALHOU pra sempre, mesmo depois do usuário já ter
+# aplicado exatamente o fix sugerido (bug já visto ao testar este script).
+acl_concede_busca_qemu() {
+  command -v getfacl >/dev/null 2>&1 || return 1
+  getfacl -p "$1" 2>/dev/null | grep -Eq '^user:qemu:..x'
+}
+
+check_qemu_pode_alcancar() {
+  local target="$1" label="$2" path dir
+  path="$(readlink -f "$target" 2>/dev/null)" || return 0
+  dir="$(dirname "$path")"
+  while true; do
+    if ! is_world_executable "$dir" && ! acl_concede_busca_qemu "$dir"; then
+      fail "$label: '$dir' não tem permissão de busca (x) para 'outros' -- o processo qemu (usuário não-root de qemu:///system) não vai conseguir abrir '$target'. Rode: setfacl -m u:qemu:--x '$dir' (ver docs/troubleshooting.md)"
+      return
+    fi
+    [ "$dir" = "/" ] && break
+    dir="$(dirname "$dir")"
+  done
+  ok "$label: caminho até '$target' é atravessável pelo usuário 'qemu'"
+}
+
+echo ""
+echo "== Acesso do usuário 'qemu' aos caminhos do build =="
+check_qemu_pode_alcancar "$ROOT_DIR" "repositório (output/ do box golden nasce aqui)"
+[ -n "${RHEL_ISO_PATH:-}" ] && [ -f "${RHEL_ISO_PATH:-}" ] \
+  && check_qemu_pode_alcancar "$RHEL_ISO_PATH" "RHEL_ISO_PATH"
+
 echo ""
 if [ "$FAILURES" -eq 0 ]; then
   echo "Tudo certo. Pode seguir com 'make build-box'."

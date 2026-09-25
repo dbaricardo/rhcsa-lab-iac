@@ -178,3 +178,79 @@ sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KE
 com o Organization ID e a activation key da sua conta Red Hat Developer
 (ver [tutorial](tutorial-fim-a-fim.md), passos 2 e 8). Só então rode `make
 reprovision`.
+
+## `virt-install` falha no final com "Cannot access storage file... Permission denied"
+
+**Problema:** `make build-box` roda a instalação inteira (baixa `vmlinuz`,
+`initrd.img`, começa o boot do instalador) e só falha **no final**, com
+`ERROR Cannot access storage file '.../output/<box>.qcow2' (as uid:107,
+gid:107): Permission denied`.
+
+**Causa:** `qemu:///system` executa o domínio como o usuário de sistema
+`qemu` (uid/gid variam, mas nunca é root), mesmo quando você roda
+`virt-install`/`build-box.sh` como root ou com sudo. Esse usuário `qemu`
+precisa de permissão de **busca** (`x`) em **todo diretório pai**, do `/`
+até o arquivo -- tanto o disco de build (`output/<box>.qcow2`) quanto a
+`RHEL_ISO_PATH`. Isso costuma passar despercebido porque:
+
+- `/root` vem com modo `0700`/`0550` por padrão em praticamente toda
+  distribuição -- se você clonar o repositório ali (ex.: testando como
+  root), o `qemu` nunca vai conseguir atravessar.
+- Em alguns distros, o próprio `$HOME` de um usuário comum também vem sem
+  `o+x` por padrão (ex.: Ubuntu Desktop recente).
+
+**Fix:**
+
+```bash
+# troque o diretório pelo pai que a mensagem de erro/check-env apontar --
+# repita subindo a árvore se o pai também não tiver o bit x para "outros"
+setfacl -m u:qemu:--x /caminho/do/diretorio
+```
+
+**Onde já está mitigado:** `make check-env` (via `scripts/check-env.sh`)
+detecta isso **antes** de gastar tempo com `build-box` -- ele resolve o
+caminho absoluto do repositório e de `RHEL_ISO_PATH`, sobe a árvore de
+diretórios checando o bit `x` de "outros" (e também reconhece uma ACL
+`user:qemu:--x` já aplicada, não só o modo octal tradicional) e aponta
+exatamente qual diretório precisa do `setfacl` acima.
+
+## Modo offline via ISO
+
+**O que é:** um caminho alternativo de provisionamento, `make
+reprovision-offline`, que existe **só para testar a infraestrutura sem
+gastar um slot de subscription** (ex.: validar este repositório do zero em
+CI ou num host descartável) -- não é um substituto do fluxo normal.
+
+**Como funciona:**
+[`scripts/offline-repo.sh`](../scripts/offline-repo.sh) monta a DVD ISO
+(`RHEL_ISO_PATH`) em modo somente leitura e serve `BaseOS/`/`AppStream/` via
+`python3 -m http.server`, só na rede privada do lab
+(`192.168.56.0/24`). O role [`common`](../ansible/roles/common/tasks/main.yml)
+recebe a variável `lab_offline_repo_url` (repassada pelo Vagrantfile a
+partir de `LAB_OFFLINE_REPO_URL`) e, quando ela está preenchida, aponta
+`BaseOS`/`AppStream` para esse HTTP local via `yum_repository`, **pulando
+inteiramente** o assert de `subscription-manager identity` -- ele é a forma
+explícita de dizer "sem subscription de propósito", não um bug.
+
+**Limitações, de propósito:**
+
+- Sem updates/erratas -- só o conteúdo congelado da ISO no momento do
+  download. Não roda `dnf -y update`.
+- Não valida o fluxo real de `subscription-manager register` em si (esse
+  continua sendo só o caminho documentado no [tutorial](tutorial-fim-a-fim.md),
+  passo 8) -- só valida que o resto do provisionamento (pacotes, roles,
+  exercícios) funciona.
+
+**Uso:**
+
+```bash
+make up                    # sobe as 3 VMs, sem provisionar
+make reprovision-offline   # em vez do registro manual + 'make reprovision'
+# ... quando terminar de testar:
+make offline-repo-stop     # para o HTTP e desmonta a ISO
+```
+
+**Se `RHEL_ISO_PATH` for a boot ISO (netinstall) em vez da DVD ISO
+completa**, `scripts/offline-repo.sh` falha cedo dizendo que não encontrou
+`BaseOS/repodata`/`AppStream/repodata` -- mesma checagem que `make
+check-env` já faz preventivamente (ver `scripts/check-env.sh`).
