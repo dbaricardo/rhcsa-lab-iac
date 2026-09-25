@@ -102,8 +102,11 @@ Subscription for Individuals** (gratuita).
      `console.redhat.com` -> ícone de perfil -> "My User Access" /
      "Account settings").
 
-Você vai usar os dois em `.env` (`RHSM_ACTIVATION_KEY` e `RHSM_ORG_ID`) no
-passo 4.
+Guarde os dois em um lugar seguro (não vão para o `.env`) — você vai usá-los
+para registrar manualmente cada uma das 3 VMs no passo 8, depois de `make
+up`. Isso é deliberado: se a activation key ficasse embutida na imagem e
+todas as 3 VMs clonadas se registrassem com a mesma identidade, elas
+compartilhariam o mesmo consumer ID na Red Hat (já causou conflito real).
 
 ## 3. Baixar a ISO do RHEL 10
 
@@ -130,10 +133,12 @@ Edite `.env` e preencha:
 | Variável | Valor |
 |---|---|
 | `RHEL_ISO_PATH` | Caminho absoluto da ISO baixada no passo 3 |
-| `RHSM_ORG_ID` | Organization ID do passo 2 |
-| `RHSM_ACTIVATION_KEY` | Activation key do passo 2 |
 | `STUDENT_PASSWORD` | Senha que você vai usar para o usuário `student` nas VMs (uso local apenas) |
 | `APPLY_SECURITY_UPDATES` | `false` (padrão, build mais rápido) ou `true` |
+
+Não há variável de subscription aqui — Organization ID e activation key do
+passo 2 só entram na jogada no passo 8, digitados manualmente por SSH em
+cada VM.
 
 `.env` nunca é commitado (está no `.gitignore`) — pode conter suas
 credenciais reais com segurança.
@@ -161,16 +166,21 @@ make build-box
 
 O que acontece (tudo automatizado, sem interação):
 
-1. Renderiza o kickstart (`kickstart/ks.cfg.tpl`) com suas variáveis de
-   `.env` (a senha já entra como hash SHA-512, nunca em texto plano).
-2. Cria um disco qcow2 de 20GB e roda `virt-install` contra a sua ISO,
+1. Gera um par de chaves SSH novo em `output/student_key` (nunca
+   commitado) — é a chave que o Vagrant vai usar para conectar no
+   `student`, já que o box não tem usuário `vagrant` nem chave conhecida.
+2. Renderiza o kickstart (`kickstart/ks.cfg.tpl`) com suas variáveis de
+   `.env` e a chave pública gerada no passo anterior (a senha já entra como
+   hash SHA-512, nunca em texto plano).
+3. Cria um disco qcow2 de 20GB e roda `virt-install` contra a sua ISO,
    injetando o kickstart via `--initrd-inject` — instalação 100%
    desassistida.
-3. Espera o domínio desligar sozinho (o kickstart termina com `poweroff`).
-4. Roda um sysprep leve offline (`image/box-finalize.sh`, via
-   `virt-customize`): remove chaves SSH de host, limpa logs, corrige
-   contexto SELinux.
-5. Empacota o resultado como um box `vagrant-libvirt` e registra com
+4. Espera o domínio desligar sozinho (o kickstart termina com `poweroff`).
+5. Roda um sysprep leve offline (`image/box-finalize.sh`, via
+   `virt-customize`): remove chaves SSH de host, limpa logs (incluindo
+   `anaconda-ks.cfg`, que carrega o hash da senha), corrige contexto
+   SELinux.
+6. Empacota o resultado como um box `vagrant-libvirt` e registra com
    `vagrant box add`.
 
 **Tempo estimado:** normalmente entre 10 e 20 minutos, a maior parte gasta
@@ -186,9 +196,8 @@ vagrant box list
 # deve listar: rhel10-rhcsa-base (libvirt, 0)
 ```
 
-Se algo falhar aqui, o erro mais comum é `RHEL_ISO_PATH` incorreto ou
-activation key/org ID inválidos — revise o `.env` e rode `make check-env`
-de novo.
+Se algo falhar aqui, o erro mais comum é `RHEL_ISO_PATH` incorreto — revise
+o `.env` e rode `make check-env` de novo.
 
 ## 7. `make up`
 
@@ -197,28 +206,53 @@ make up
 ```
 
 Isso gera `labs/catalog.json` (a partir dos `meta.json` de cada exercício em
-`labs/`) e roda `vagrant up`, que:
+`labs/`) e roda `vagrant up --no-provision`, que cria as 3 VMs (`servera`,
+`serverb`, depois `workstation`, sempre por último) a partir do box golden,
+cada uma com IP estático conforme `machines.yaml` — **sem rodar o Ansible
+ainda**. O Ansible fica para o passo 9, depois de registrar a subscription.
 
-1. Cria as 3 VMs (`servera`, `serverb`, depois `workstation`, sempre por
-   último) a partir do box golden, cada uma com IP estático conforme
-   `machines.yaml`.
-2. Depois que as 3 existem, dispara o playbook Ansible
-   (`ansible/site.yml`) uma única vez, provisionando tudo: usuário
-   `student`, SSH cruzado entre as VMs, pacotes de cada papel, os
-   exercícios atribuídos a cada host e o dashboard web na `workstation`.
-
-Isso demora vários minutos (clonagem de 3 discos + provisionamento
-completo). Acompanhe a saída do Ansible no terminal — ela mostra cada task
-rodando por host.
-
-## 8. Verificar as VMs
+Confirme que as 3 VMs subiram:
 
 ```bash
 vagrant status
 ```
 
 Deve mostrar `workstation`, `servera` e `serverb`, todas em estado
-`running`. Para confirmar acesso SSH:
+`running`.
+
+## 8. Registrar a subscription manualmente em cada VM
+
+Este projeto **não** registra a subscription automaticamente — nem no box
+golden, nem via Ansible. Se as 3 VMs clonadas do mesmo box se registrassem
+com a mesma activation key embutida na imagem, elas compartilhariam o mesmo
+consumer ID na Red Hat (já causou conflito real). Por isso é um passo
+manual, uma vez por VM, usando o Organization ID e a activation key
+anotados no passo 2:
+
+```bash
+vagrant ssh workstation -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+vagrant ssh servera     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+vagrant ssh serverb     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+```
+
+Se você tiver poucos slots disponíveis na sua subscription gratuita, veja
+[docs/troubleshooting.md](troubleshooting.md) (seção "Limite de sistemas
+simultâneos").
+
+## 9. `make reprovision`
+
+```bash
+make reprovision
+```
+
+Isso dispara o playbook Ansible (`ansible/site.yml`) contra as 3 VMs já no
+ar, provisionando tudo: usuário `student`, SSH cruzado entre as VMs,
+pacotes de cada papel, os exercícios atribuídos a cada host e o dashboard
+web na `workstation`. O role `common` falha cedo e com mensagem clara em
+qualquer VM que você tenha esquecido de registrar no passo 8.
+
+Acompanhe a saída do Ansible no terminal — ela mostra cada task rodando por
+host. Ao final, confirme o acesso SSH:
 
 ```bash
 vagrant ssh workstation
@@ -231,12 +265,12 @@ lab list
 ```
 
 Isso deve imprimir a lista de exercícios disponíveis (número, id, host(s),
-título). Se `lab list` falhar ou vier vazia, confirme que `make up` rodou
-até o fim sem erros do Ansible.
+título). Se `lab list` falhar ou vier vazia, confirme que `make
+reprovision` rodou até o fim sem erros do Ansible.
 
 Saia da sessão SSH (`exit` ou `Ctrl+D`) quando terminar.
 
-## 9. Acessar o dashboard
+## 10. Acessar o dashboard
 
 ```bash
 make status
@@ -256,7 +290,7 @@ Se a página não carregar, confirme a origem permitida em `machines.yaml` ->
 `dashboard.allowed_source` — por padrão é a própria rede privada do lab
 (`192.168.56.0/24`), que já inclui a interface do libvirt no seu host.
 
-## 10. Resolver um exercício de ponta a ponta
+## 11. Resolver um exercício de ponta a ponta
 
 Vamos usar `users-groups-01` como exemplo — um exercício simples, de um
 único host (`servera`).
@@ -308,7 +342,16 @@ Isso reverte explicitamente o que `lab start` preparou (nunca reinvoca
 `start.sh` para isso — ver [troubleshooting.md](troubleshooting.md)),
 deixando `servera` pronta para o próximo exercício.
 
-## 11. `make destroy`
+## 12. `make destroy`
+
+Antes de destruir, se sua subscription gratuita tiver poucos slots, libere-os
+primeiro (opcional, mas evita ter que limpar depois pelo console web):
+
+```bash
+vagrant ssh workstation -c 'sudo subscription-manager unregister' || true
+vagrant ssh servera     -c 'sudo subscription-manager unregister' || true
+vagrant ssh serverb     -c 'sudo subscription-manager unregister' || true
+```
 
 Quando terminar a sessão de estudo:
 
@@ -318,8 +361,9 @@ make destroy
 
 Isso destrói as 3 VMs (`vagrant destroy -f`) — **o box golden
 `rhel10-rhcsa-base` não é removido**, então da próxima vez basta rodar `make
-up` de novo (sem precisar refazer `make build-box`), a menos que você queira
-recomeçar do zero com uma imagem base nova.
+up` de novo (sem precisar refazer `make build-box`), seguido de novo pelo
+registro manual da subscription (passo 8) e `make reprovision` — a menos
+que você queira recomeçar do zero com uma imagem base nova.
 
 ## Onde ir depois
 

@@ -28,6 +28,7 @@ check_bin vagrant "https://www.vagrantup.com/downloads"
 check_bin ansible "pacote 'ansible' ou 'ansible-core'"
 check_bin envsubst "pacote 'gettext'"
 check_bin python3 "pacote 'python3'"
+check_bin ssh-keygen "pacote 'openssh-clients'"
 
 echo ""
 echo "== Plugin vagrant-libvirt =="
@@ -72,7 +73,7 @@ if [ -f .env ]; then
   ok ".env encontrado"
   # shellcheck disable=SC1091
   source .env
-  for var in RHEL_ISO_PATH RHSM_ORG_ID RHSM_ACTIVATION_KEY STUDENT_PASSWORD; do
+  for var in RHEL_ISO_PATH STUDENT_PASSWORD; do
     if [ -n "${!var:-}" ]; then
       ok "$var definido"
     else

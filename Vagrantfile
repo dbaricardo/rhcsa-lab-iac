@@ -4,8 +4,10 @@
 # Topologia lida de machines.yaml (única fonte de verdade). Provider único:
 # vagrant-libvirt. O box "rhel10-rhcsa-base" é gerado localmente por
 # scripts/build-box.sh (ver README/docs/tutorial-fim-a-fim.md) — não existe
-# em nenhum registro público, já que embute a ativação da subscription do
-# usuário final.
+# em nenhum registro público, já que embute a senha hash do usuário
+# "student" e a chave pública SSH gerada localmente (ver output/student_key).
+# A subscription NÃO é registrada automaticamente -- é passo manual do
+# usuário depois do "vagrant up" (ver docs/tutorial-fim-a-fim.md, passo 8).
 
 require 'yaml'
 
@@ -25,6 +27,20 @@ MACHINES     = SPEC['machines']
 ORDERED_NAMES = MACHINES.keys.sort_by { |name| name == 'workstation' ? 1 : 0 }
 
 Vagrant.configure('2') do |config|
+  # O box golden não tem usuário "vagrant" nem a chave insegura padrão --
+  # só "student", com a chave pública gerada por scripts/build-box.sh já
+  # instalada em ~/.ssh/authorized_keys via kickstart. insert_key = false
+  # porque essa chave já é fixa e local (nunca commitada, ver .gitignore);
+  # não há necessidade de o Vagrant gerar e trocar por outra no 1o boot.
+  config.ssh.username = STUDENT_USER
+  config.ssh.private_key_path = File.join(ROOT, 'output', 'student_key')
+  config.ssh.insert_key = false
+
+  # Nenhum role Ansible depende de /vagrant (todo o código é lido do host de
+  # controle) e o box "minimal-environment" não tem rsync/NFS-server
+  # instalado -- sem isto, o 1o "vagrant up" trava tentando montar a pasta.
+  config.vm.synced_folder '.', '/vagrant', disabled: true
+
   ORDERED_NAMES.each do |name|
     spec = MACHINES[name]
     is_last = (name == ORDERED_NAMES.last)

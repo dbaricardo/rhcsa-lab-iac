@@ -16,6 +16,31 @@
     mode: "0440"
     validate: "visudo -cf %s"
 
+# A subscription NÃO é registrada automaticamente por este projeto (nem no
+# kickstart do box golden, nem aqui) -- registrar as 3 VMs clonadas com a
+# mesma identidade faria elas compartilharem o mesmo consumer ID na Red Hat,
+# o que já causou conflito real. É passo manual do usuário por SSH em cada
+# VM (ver docs/tutorial-fim-a-fim.md, passo 8). Falhar cedo aqui, antes de
+# qualquer `dnf install`, evita um erro genérico de "repositório vazio" bem
+# mais adiante em servera/serverb/workstation.
+- name: Verificar se a subscription já foi registrada manualmente
+  ansible.builtin.command: subscription-manager identity
+  register: lab_subscription_identity
+  changed_when: false
+  failed_when: false
+
+- name: Falhar cedo se {{ inventory_hostname }} não estiver registrado na subscription
+  ansible.builtin.assert:
+    that:
+      - lab_subscription_identity.rc == 0
+    fail_msg: >-
+      {{ inventory_hostname }} não está registrado na Red Hat subscription.
+      SSH nesta VM (vagrant ssh {{ inventory_hostname }}) e rode manualmente:
+      sudo subscription-manager register --org=<ORG_ID>
+      --activationkey=<ACTIVATION_KEY> (ver docs/tutorial-fim-a-fim.md,
+      passo 8). Depois rode 'make reprovision'.
+    success_msg: "{{ inventory_hostname }}: subscription registrada, seguindo."
+
 - name: Ler topologia de machines.yaml (para /etc/hosts)
   ansible.builtin.set_fact:
     lab_machines: "{{ (lookup('file', playbook_dir + '/../machines.yaml') | from_yaml).machines }}"

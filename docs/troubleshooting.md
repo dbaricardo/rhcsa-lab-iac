@@ -116,18 +116,65 @@ exercício.
 reverter essa configuração especificamente no seu próprio `finish.sh` —
 nunca assumir que o próximo exercício vai lidar com o estado deixado.
 
+## `lab start storage-lvm-01` para de encontrar o disco depois de um `finish`
+
+**Problema:** depois de rodar `lab finish storage-lvm-01` uma vez, um `lab
+start storage-lvm-01` seguinte falha dizendo que não encontrou um disco de
+~6GB livre em `serverb`, mesmo com o disco extra devidamente anexado pelo
+Vagrant/libvirt.
+
+**Causa:** a versão antiga de `finish.sh` só limpava o PV/LV (via
+`pvremove`/`wipefs` no path do PV) depois que o estudante já tinha
+particionado o disco. A tabela de partições em si continuava no disco.
+`resolve_disco()` (usada por `start.sh`) exige explicitamente um disco
+**cru** (sem partições) — com a tabela de partições ainda presente, esse
+disco nunca mais era considerado "livre".
+
+**Fix:** `finish.sh` agora também localiza o disco pai por tamanho, via
+`disco_por_tamanho()` de `lab-common.sh` (a mesma função que
+`filesystems-01/finish.sh` já usava para o mesmo problema), e roda
+`wipefs -a` em cada partição e no disco inteiro — não só no PV.
+
 ## Limite de sistemas simultâneos da subscription gratuita
 
-**Problema:** `subscription-manager register` (no `%post` do kickstart, ou
-manualmente) falha dizendo que o limite de sistemas registrados foi
-atingido.
+**Problema:** `subscription-manager register` (rodado manualmente em cada
+VM, ver [tutorial](tutorial-fim-a-fim.md) passo 8) falha dizendo que o
+limite de sistemas registrados foi atingido.
 
 **Causa:** a **Red Hat Developer Subscription for Individuals** (gratuita)
-tem um limite de sistemas simultâneos registrados por conta. Rebuilds
-frequentes do box golden (cada build registra um sistema novo) podem
-esgotar esse limite.
+tem um limite de sistemas simultâneos registrados por conta. Como cada uma
+das 3 VMs (`workstation`/`servera`/`serverb`) se registra individualmente
+com seu próprio consumer ID — deliberado, ver a seção abaixo — cada ciclo
+`make up` + `make destroy` consome 3 slots, e slots de VMs já destruídas
+continuam contando até serem revogados.
 
 **Fix:** acesse <https://console.redhat.com> com sua conta Red Hat, vá até
 a lista de sistemas registrados ("Inventory" / "Systems") e revogue/remova
-um sistema antigo (por exemplo, de um build anterior do box golden que você
-já destruiu) para liberar um slot.
+os sistemas de VMs que você já destruiu (`make destroy`) para liberar
+slots. Considere rodar `sudo subscription-manager unregister` em cada VM
+antes de `make destroy`, para não depender de fazer essa limpeza depois
+pelo console web.
+
+## Subscription não é registrada automaticamente
+
+**Problema:** os roles Ansible (`servera`, `serverb`, `workstation`) falham
+em qualquer task `dnf install` com erro de repositório vazio/indisponível.
+
+**Causa:** deliberado — este projeto **não** registra a subscription
+automaticamente (nem no `%post` do kickstart, nem via Ansible). Registrar
+as 3 VMs clonadas do mesmo box golden com a mesma identidade faria elas
+compartilharem o mesmo consumer ID na Red Hat, o que já causou conflito
+real em produção. Por isso o role [`common`](../ansible/roles/common/tasks/main.yml)
+falha cedo com `subscription-manager identity` antes de qualquer
+`dnf install`, com uma mensagem apontando o comando manual.
+
+**Fix:** depois de `make up` (que sobe as VMs com `--no-provision`), entre
+em cada uma (`vagrant ssh workstation`/`servera`/`serverb`) e rode:
+
+```bash
+sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>
+```
+
+com o Organization ID e a activation key da sua conta Red Hat Developer
+(ver [tutorial](tutorial-fim-a-fim.md), passos 2 e 8). Só então rode `make
+reprovision`.

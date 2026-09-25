@@ -11,12 +11,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR" || exit 1
 
+# vagrant-libvirt e "make check-env" assumem qemu:///system; sem isto,
+# virt-install/virsh rodando como usuário comum pode cair em
+# qemu:///session (rede/pool "default" diferentes, já causou confusão real).
+export LIBVIRT_DEFAULT_URI="qemu:///system"
+
 # shellcheck disable=SC1091
 [ -f .env ] && source .env
 
 : "${RHEL_ISO_PATH:?defina RHEL_ISO_PATH no .env (ver .env.example)}"
-: "${RHSM_ORG_ID:?defina RHSM_ORG_ID no .env}"
-: "${RHSM_ACTIVATION_KEY:?defina RHSM_ACTIVATION_KEY no .env}"
 : "${STUDENT_PASSWORD:?defina STUDENT_PASSWORD no .env}"
 
 if [ ! -f "$RHEL_ISO_PATH" ]; then
@@ -25,7 +28,7 @@ if [ ! -f "$RHEL_ISO_PATH" ]; then
   exit 1
 fi
 
-for bin in virt-install virt-customize qemu-img envsubst openssl vagrant python3; do
+for bin in virt-install virt-customize qemu-img envsubst openssl vagrant python3 ssh-keygen; do
   command -v "$bin" >/dev/null 2>&1 || {
     echo "ERRO: '$bin' não encontrado no PATH. Rode 'make check-env' para o diagnóstico completo." >&2
     exit 1
@@ -49,11 +52,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "==> Gerando par de chaves SSH do usuário '${STUDENT_USER}' (usado pelo Vagrant)"
+SSH_KEY_PATH="$OUT_DIR/student_key"
+if [ ! -f "$SSH_KEY_PATH" ]; then
+  ssh-keygen -t ed25519 -N '' -C 'rhcsa-lab-iac-student' -f "$SSH_KEY_PATH" >/dev/null
+fi
+STUDENT_SSH_PUBKEY="$(cat "${SSH_KEY_PATH}.pub")"
+
 echo "==> Renderizando kickstart"
-export RHSM_ORG_ID RHSM_ACTIVATION_KEY STUDENT_USER
+export STUDENT_USER STUDENT_SSH_PUBKEY
 STUDENT_PASSWORD_HASH="$(openssl passwd -6 "$STUDENT_PASSWORD")"
 export STUDENT_PASSWORD_HASH
-envsubst '${RHSM_ORG_ID} ${RHSM_ACTIVATION_KEY} ${STUDENT_USER} ${STUDENT_PASSWORD_HASH}' \
+envsubst '${STUDENT_USER} ${STUDENT_PASSWORD_HASH} ${STUDENT_SSH_PUBKEY}' \
   < kickstart/ks.cfg.tpl > "$KS_RENDERED"
 
 echo "==> Criando disco de build ($DISK, 20G)"
@@ -94,3 +104,8 @@ echo "==> Registrando o box no Vagrant"
 vagrant box add "$BOX_NAME" "$OUT_DIR/${BOX_NAME}.box" --force
 
 echo "==> Box '$BOX_NAME' pronto. Confirme com: vagrant box list"
+echo "==> Lembrete: a subscription NÃO foi registrada (nem no box, nem em"
+echo "    nenhuma VM). Depois de 'make up', registre manualmente cada uma"
+echo "    das 3 VMs (workstation/servera/serverb) -- ver"
+echo "    docs/tutorial-fim-a-fim.md, passo 8 -- e só então rode"
+echo "    'make reprovision'."

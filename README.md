@@ -25,7 +25,10 @@ No host onde as VMs vão rodar (Linux com suporte a KVM):
 - **python3**, **envsubst** (pacote `gettext`), **qemu-img**
 - Uma conta **Red Hat Developer Subscription for Individuals** (gratuita) e a
   **ISO oficial do RHEL 10** baixada da sua própria conta Red Hat — este
-  repositório nunca inclui ou redistribui a ISO
+  repositório nunca inclui ou redistribui a ISO. A subscription é registrada
+  manualmente por você em cada VM depois de `make up` (nunca automatizada,
+  ver tutorial passo 8) — evita que as 3 VMs compartilhem a mesma identidade
+  na Red Hat.
 
 Rode `make check-env` para validar tudo isso automaticamente antes de
 continuar. Detalhes de como obter a conta/ISO estão no
@@ -35,18 +38,24 @@ continuar. Detalhes de como obter a conta/ISO estão no
 
 ```bash
 cp .env.example .env
-# edite .env: RHEL_ISO_PATH, RHSM_ORG_ID, RHSM_ACTIVATION_KEY, STUDENT_PASSWORD
+# edite .env: RHEL_ISO_PATH, STUDENT_PASSWORD
 
 make check-env      # valida binários, libvirt, .env
 make build-box      # constrói o box golden "rhel10-rhcsa-base" (virt-install + kickstart)
-make up              # sobe as 3 VMs e roda o Ansible
+make up              # sobe as 3 VMs, ainda SEM rodar o Ansible
 
-make status          # mostra o estado das VMs e a URL do dashboard
+# registre a subscription manualmente em cada VM (ver tutorial, passo 8):
+vagrant ssh workstation -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+vagrant ssh servera     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+vagrant ssh serverb     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+
+make reprovision      # agora sim, roda o Ansible
+make status           # mostra o estado das VMs e a URL do dashboard
 ```
 
-Depois que `make up` terminar, acesse o dashboard no endereço impresso por
-`make status` (por padrão `http://192.168.56.10:8421`) para ver o catálogo de
-exercícios e o progresso.
+Depois que `make reprovision` terminar, acesse o dashboard no endereço
+impresso por `make status` (por padrão `http://192.168.56.10:8421`) para ver
+o catálogo de exercícios e o progresso.
 
 Todo o trabalho com exercícios é feito de dentro da `workstation`:
 

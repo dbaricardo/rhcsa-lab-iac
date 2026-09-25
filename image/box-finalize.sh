@@ -17,8 +17,11 @@ restorecon -Rv /etc || true
 rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub
 
 # Limpeza de logs/histórico de build — não deve vazar nada do processo de
-# instalação para as VMs finais de estudo.
+# instalação para as VMs finais de estudo. anaconda-ks.cfg/original-ks.cfg
+# contêm o kickstart renderizado (inclui o hash da senha do student) --
+# removidos por padrão pelo Anaconda em alguns fluxos, mas não garantido.
 rm -rf /var/log/anaconda /root/ks-post.log
+rm -f /root/anaconda-ks.cfg /root/original-ks.cfg
 : > /var/log/messages 2>/dev/null || true
 rm -f /root/.bash_history /home/*/.bash_history 2>/dev/null || true
 

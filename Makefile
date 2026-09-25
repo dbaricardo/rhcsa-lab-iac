@@ -22,8 +22,12 @@ catalog: ## Gera labs/catalog.json a partir de labs/*/meta.json
 build-box: check-env ## Constrói o box RHEL10 golden via virt-install + kickstart
 	@bash scripts/build-box.sh
 
-up: catalog ## Sobe as 3 VMs e roda o Ansible (vagrant up)
-	@vagrant up
+up: catalog ## Sobe as 3 VMs SEM provisionar (registre a subscription e rode 'make reprovision')
+	@vagrant up --no-provision
+	@echo ""
+	@echo "VMs no ar, ainda SEM Ansible. Registre a subscription manualmente"
+	@echo "em cada uma (workstation/servera/serverb) -- ver"
+	@echo "docs/tutorial-fim-a-fim.md, passo 8 -- e então rode 'make reprovision'."
 
 status: ## Mostra o estado das VMs e a URL do dashboard
 	@vagrant status
