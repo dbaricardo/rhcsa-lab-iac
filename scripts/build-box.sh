@@ -82,9 +82,21 @@ virt-install \
   --graphics none \
   --console pty,target_type=serial \
   --noautoconsole \
+  --noreboot \
   --wait -1
 
 echo "==> Instalação concluída (domínio desligou sozinho via 'poweroff' do kickstart)"
+
+# --noreboot acima evita a corrida real já vista em produção: sem ele, o
+# virt-install reinicia sozinho o domínio depois do poweroff do kickstart
+# (comportamento padrão, presumindo que o usuário quer "usar" a VM
+# instalada) -- e esse domínio recém-reiniciado ainda pode estar retendo o
+# lock do qcow2 no instante exato em que a linha abaixo chama
+# virt-customize, fazendo "qemu-img info" falhar por disco ocupado.
+# Undefine explícito aqui, mesmo com --noreboot, é defesa em profundidade
+# para o domínio de instalação nunca vazar para o próximo "make build-box".
+virsh --connect qemu:///system destroy "$DOMAIN_NAME" >/dev/null 2>&1 || true
+virsh --connect qemu:///system undefine "$DOMAIN_NAME" --nvram >/dev/null 2>&1 || true
 
 echo "==> Sysprep offline (image/box-finalize.sh via virt-customize)"
 virt-customize -a "$DISK" --run image/box-finalize.sh

@@ -23,7 +23,14 @@ firstboot --disable
 # pelo virt-install). A topologia real de estudo (IP fixo por VM) e aplicada
 # depois pelo Vagrant/Ansible, nao aqui, para o box golden ficar
 # independente da topologia de qualquer clone.
-network --bootproto=dhcp --device=link --activate --hostname=rhcsa-lab-base
+#
+# --device=link (escolhe "o primeiro dispositivo com link up") falha de
+# forma real sob nested KVM: o parser de kickstart do dracut roda cedo
+# demais no boot, antes do virtio-net terminar de negociar o link, e
+# desiste silenciosamente ("WARNING: No device with link found for
+# --device=link") -- sem --device, a Anaconda usa o primeiro dispositivo
+# de rede encontrado, sem depender do link já estar up nesse ponto do boot.
+network --bootproto=dhcp --activate --hostname=rhcsa-lab-base
 
 # Login root desabilitado por senha (consistente com o ambiente real de
 # producao) -- acesso via student + sudo.
@@ -63,9 +70,28 @@ set -eux
 # pacotes com uma 4a chave de release (pos-quantica, key ID 05707a62) que nao
 # vem pre-instalada. Sem isso, dnf install/rpm-build falha com "SIGNATURE:
 # NOT OK". Importar aqui resolve de saida, para ninguem redescobrir.
-curl -fsSL -o /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 \
-  https://security.access.redhat.com/data/6afedf8f.txt
-rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4
+#
+# NÃO fatal de propósito (ao contrário do resto deste %post, que usa
+# --erroronfail + set -e): a rede de saída do domínio de BUILD depende do
+# ambiente onde `make build-box` roda (proxy, firewall, NAT aninhado em
+# testes) e já foi vista falhando/travando aqui em produção real -- sem o
+# --max-time, um curl sem rede que apenas trava (em vez de falhar rápido)
+# deixa a instalação inteira pendurada num prompt de erro que
+# --noautoconsole nunca mostra, sem nenhum sinal do que aconteceu. O role
+# Ansible `common` já reimporta essa mesma chave, com o mesmo
+# `failed_when: false`, como defesa em profundidade em toda VM antes de
+# qualquer dnf install -- este bloco aqui é só uma otimização de "resolver
+# de saída", não a única linha de defesa.
+if curl -fsSL --max-time 20 -o /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 \
+     https://security.access.redhat.com/data/6afedf8f.txt \
+   && rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4; then
+  echo "4a chave de release do RHEL10 importada com sucesso."
+else
+  echo "AVISO: não foi possível importar a 4a chave de release do RHEL10" \
+       "durante o build (sem rede de saída no domínio de build?)." \
+       "O role Ansible 'common' reimporta essa chave em toda VM antes de" \
+       "qualquer dnf install -- ver docs/troubleshooting.md." >&2
+fi
 
 echo "${STUDENT_USER} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${STUDENT_USER}"
 chmod 0440 "/etc/sudoers.d/${STUDENT_USER}"
