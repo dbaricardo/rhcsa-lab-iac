@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Agrega labs/<slug>/meta.json em labs/catalog.json (formato consumido pelo
-dashboard e pelo dispatcher `lab`). Roda antes de `vagrant up`/`provision`
-(ver Makefile: `catalog` é dependência de `up`/`reprovision`)."""
+dashboard e pelo dispatcher `lab`). Roda antes do Terraform e do Ansible
+(ver Makefile: `catalog` é dependência de `infra`/`provision`)."""
 import json
 import sys
 from pathlib import Path

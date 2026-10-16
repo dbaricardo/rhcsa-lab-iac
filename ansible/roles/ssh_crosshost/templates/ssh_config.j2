@@ -1,6 +1,6 @@
 # Gerenciado pelo Ansible (role ssh_crosshost) -- não editar manualmente.
 # accept-new é aceitável aqui: rede privada isolada do próprio lab, hosts
-# recém-criados a cada `vagrant up`, sem histórico de known_hosts anterior.
+# recém-criados a cada `make deploy`, sem histórico de known_hosts anterior.
 {% for name, spec in lab_machines.items() if name != 'workstation' %}
 Host {{ name }}
     HostName {{ spec.ip }}

@@ -1,17 +1,18 @@
 #!/bin/bash
-# Constrói o box golden "rhel10-rhcsa-base" via virt-install + kickstart,
-# direto contra a ISO apontada em .env (RHEL_ISO_PATH) -- sem Packer.
+# Constrói a imagem golden "rhel10-rhcsa-base" (qcow2) via virt-install +
+# kickstart, direto contra a ISO apontada em .env (RHEL_ISO_PATH) -- sem
+# Packer.
 #
 # Fluxo: renderiza o kickstart -> virt-install instala desassistido num
-# domínio libvirt temporário -> sysprep offline (image/box-finalize.sh) ->
-# empacota o qcow2 como box vagrant-libvirt -> registra com `vagrant box add`
-# -> remove o domínio temporário, mantendo só o box final.
+# domínio libvirt temporário -> sysprep offline (image/finalize.sh) ->
+# publica output/<imagem>.qcow2, que o Terraform usa como disco base das
+# 3 VMs. O domínio temporário é sempre removido.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR" || exit 1
 
-# vagrant-libvirt e "make check-env" assumem qemu:///system; sem isto,
+# Terraform e "make check-env" assumem qemu:///system; sem isto,
 # virt-install/virsh rodando como usuário comum pode cair em
 # qemu:///session (rede/pool "default" diferentes, já causou confusão real).
 export LIBVIRT_DEFAULT_URI="qemu:///system"
@@ -28,19 +29,23 @@ if [ ! -f "$RHEL_ISO_PATH" ]; then
   exit 1
 fi
 
-for bin in virt-install virt-customize qemu-img envsubst openssl vagrant python3 ssh-keygen; do
+for bin in virt-install virt-customize qemu-img envsubst openssl python3 ssh-keygen; do
   command -v "$bin" >/dev/null 2>&1 || {
     echo "ERRO: '$bin' não encontrado no PATH. Rode 'make check-env' para o diagnóstico completo." >&2
     exit 1
   }
 done
 
-BOX_NAME="$(python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['box'])")"
+IMAGE_NAME="$(python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['image'])")"
 STUDENT_USER="$(python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['student']['username'])")"
 
 OUT_DIR="$ROOT_DIR/output"
-mkdir -p "$OUT_DIR/box"
-DISK="$OUT_DIR/${BOX_NAME}.qcow2"
+mkdir -p "$OUT_DIR"
+IMAGE="$OUT_DIR/${IMAGE_NAME}.qcow2"
+# Instala num arquivo temporário e só renomeia no fim: um build interrompido
+# nunca deixa um qcow2 pela metade com o nome final (o Makefile usa a
+# existência desse arquivo para decidir se precisa reconstruir).
+DISK="${IMAGE}.partial"
 KS_RENDERED="$OUT_DIR/ks.cfg"
 DOMAIN_NAME="rhcsa-lab-build-$$"
 
@@ -52,7 +57,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> Gerando par de chaves SSH do usuário '${STUDENT_USER}' (usado pelo Vagrant)"
+echo "==> Gerando par de chaves SSH do usuário '${STUDENT_USER}' (usado pelo Ansible)"
 SSH_KEY_PATH="$OUT_DIR/student_key"
 if [ ! -f "$SSH_KEY_PATH" ]; then
   ssh-keygen -t ed25519 -N '' -C 'rhcsa-lab-iac-student' -f "$SSH_KEY_PATH" >/dev/null
@@ -63,6 +68,7 @@ echo "==> Renderizando kickstart"
 export STUDENT_USER STUDENT_SSH_PUBKEY
 STUDENT_PASSWORD_HASH="$(openssl passwd -6 "$STUDENT_PASSWORD")"
 export STUDENT_PASSWORD_HASH
+# shellcheck disable=SC2016  # literais de propósito: lista de variáveis do envsubst
 envsubst '${STUDENT_USER} ${STUDENT_PASSWORD_HASH} ${STUDENT_SSH_PUBKEY}' \
   < kickstart/ks.cfg.tpl > "$KS_RENDERED"
 
@@ -71,6 +77,12 @@ rm -f "$DISK"
 qemu-img create -f qcow2 "$DISK" 20G
 
 echo "==> Instalação desassistida via virt-install (isso demora alguns minutos)"
+# q35 + BIOS (SeaBIOS), igual ao domínio que o Terraform cria: a imagem
+# precisa nascer com partição biosboot, não ESP. BIOS vem de NÃO passar
+# --boot: "--boot firmware=bios" exige um descritor JSON de firmware BIOS,
+# que o seabios do RHEL/Rocky 10 não instala ("Unable to find 'bios'
+# firmware", visto em produção) -- sem <os firmware=...> o libvirt usa o
+# SeaBIOS embutido do QEMU em qualquer distro.
 virt-install \
   --name "$DOMAIN_NAME" \
   --memory 2048 --vcpus 2 \
@@ -79,6 +91,7 @@ virt-install \
   --initrd-inject "$KS_RENDERED" \
   --extra-args "inst.ks=file:/$(basename "$KS_RENDERED") console=ttyS0,115200n8 inst.text" \
   --os-variant rhel10-unknown \
+  --machine q35 \
   --graphics none \
   --console pty,target_type=serial \
   --noautoconsole \
@@ -94,30 +107,14 @@ echo "==> Instalação concluída (domínio desligou sozinho via 'poweroff' do k
 # lock do qcow2 no instante exato em que a linha abaixo chama
 # virt-customize, fazendo "qemu-img info" falhar por disco ocupado.
 # Undefine explícito aqui, mesmo com --noreboot, é defesa em profundidade
-# para o domínio de instalação nunca vazar para o próximo "make build-box".
+# para o domínio de instalação nunca vazar para o próximo "make build-image".
 virsh --connect qemu:///system destroy "$DOMAIN_NAME" >/dev/null 2>&1 || true
 virsh --connect qemu:///system undefine "$DOMAIN_NAME" --nvram >/dev/null 2>&1 || true
 
-echo "==> Sysprep offline (image/box-finalize.sh via virt-customize)"
-virt-customize -a "$DISK" --run image/box-finalize.sh
+echo "==> Sysprep offline (image/finalize.sh via virt-customize)"
+virt-customize -a "$DISK" --run image/finalize.sh
 
-echo "==> Empacotando como box vagrant-libvirt"
-cat > "$OUT_DIR/box/metadata.json" <<EOF
-{
-  "provider": "libvirt",
-  "format": "qcow2",
-  "virtual_size": 20
-}
-EOF
-cp "$DISK" "$OUT_DIR/box/box.img"
-tar -czf "$OUT_DIR/${BOX_NAME}.box" -C "$OUT_DIR/box" metadata.json box.img
+mv -f "$DISK" "$IMAGE"
 
-echo "==> Registrando o box no Vagrant"
-vagrant box add "$BOX_NAME" "$OUT_DIR/${BOX_NAME}.box" --force
-
-echo "==> Box '$BOX_NAME' pronto. Confirme com: vagrant box list"
-echo "==> Lembrete: a subscription NÃO foi registrada (nem no box, nem em"
-echo "    nenhuma VM). Depois de 'make up', registre manualmente cada uma"
-echo "    das 3 VMs (workstation/servera/serverb) -- ver"
-echo "    docs/tutorial-fim-a-fim.md, passo 8 -- e só então rode"
-echo "    'make reprovision'."
+echo "==> Imagem pronta: $IMAGE"
+echo "==> Próximo passo: 'make deploy' (ou 'make deploy-offline' sem subscription)."

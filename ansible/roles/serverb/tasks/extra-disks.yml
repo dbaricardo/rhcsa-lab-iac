@@ -1,5 +1,5 @@
 ---
-# Só CONFIRMA presença dos discos extra anexados pelo Vagrantfile (a partir
+# Só CONFIRMA presença dos discos extra anexados pelo Terraform (a partir
 # de machines.yaml -> serverb.extra_disks) -- nunca particiona/formata aqui.
 # Os discos ficam brutos de propósito: os próprios exercícios de LVM/storage
 # praticam pvcreate/mkfs do zero, fiel ao exame real. Nunca referenciamos
@@ -29,6 +29,6 @@
       Esperava pelo menos {{ serverb_extra_disks | length }} disco(s) extra
       brutos em serverb (definidos em machines.yaml), mas lsblk só mostrou
       {{ serverb_raw_disks.stdout_lines | length }}. Confira o bloco
-      `libvirt.storage` no Vagrantfile.
+      `extra_disks` em machines.yaml (terraform/main.tf).
     success_msg: "Discos extra de serverb confirmados: {{ serverb_raw_disks.stdout_lines }}"
   when: serverb_extra_disks | length > 0

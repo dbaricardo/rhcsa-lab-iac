@@ -1,5 +1,5 @@
 #!/bin/bash
-# Smoke test fim a fim: roda depois de "make up" para confirmar que a
+# Smoke test fim a fim: roda depois de "make deploy" para confirmar que a
 # infraestrutura está de pé e o ciclo lab start/grade/finish funciona.
 #
 # NÃO valida se o exercício foi resolvido corretamente -- só confirma que os
@@ -32,18 +32,13 @@ die_infra() {
   exit 2
 }
 
-# --- 1. vagrant status: confirma as 3 VMs "running" -------------------------
-info "vagrant status"
+# --- 1. virsh: confirma as 3 VMs "running" ---------------------------------
+info "estado das VMs (virsh)"
 
-if ! command -v vagrant >/dev/null 2>&1; then
-  die_infra "comando 'vagrant' não encontrado no PATH"
-fi
-
-STATUS_OUTPUT="$(vagrant status --machine-readable 2>/dev/null)" \
-  || die_infra "'vagrant status' falhou ao executar"
+command -v virsh >/dev/null 2>&1 || die_infra "comando 'virsh' não encontrado no PATH"
 
 for vm in workstation servera serverb; do
-  if echo "$STATUS_OUTPUT" | grep -q "^[0-9]*,${vm},state,running$"; then
+  if [ "$(virsh -c qemu:///system domstate "rhcsa-lab-${vm}" 2>/dev/null)" = "running" ]; then
     ok "$vm está running"
   else
     fail "$vm não está running"
@@ -51,7 +46,7 @@ for vm in workstation servera serverb; do
 done
 
 if [ "$FAILURES" -gt 0 ]; then
-  die_infra "uma ou mais VMs não estão no estado 'running' -- rode 'make up' primeiro"
+  die_infra "uma ou mais VMs não estão no estado 'running' -- rode 'make deploy' primeiro"
 fi
 
 # --- 2. dashboard /healthz --------------------------------------------------
@@ -78,10 +73,10 @@ else
 fi
 
 # --- 3. lab list via SSH na workstation -------------------------------------
-info "vagrant ssh workstation -c 'lab list'"
+info "workstation: lab list"
 
 LIST_OUT="$WORK_DIR/list.out"
-if ! vagrant ssh workstation -c 'lab list' >"$LIST_OUT" 2>&1; then
+if ! bash scripts/lab-ssh.sh workstation 'lab list' >"$LIST_OUT" 2>&1; then
   cat "$LIST_OUT" >&2
   die_infra "'lab list' falhou dentro da workstation"
 fi
@@ -100,9 +95,9 @@ ok "'$EXAMPLE_LAB' aparece no catálogo"
 # indica falha de infra (ex.: SSH para o host do exercício não funcionou),
 # não o resultado do exercício em si.
 for action in start grade finish; do
-  info "vagrant ssh workstation -c 'lab $action $EXAMPLE_LAB'"
+  info "workstation: lab $action $EXAMPLE_LAB"
   ACTION_OUT="$WORK_DIR/${action}.out"
-  if vagrant ssh workstation -c "lab $action $EXAMPLE_LAB" >"$ACTION_OUT" 2>&1; then
+  if bash scripts/lab-ssh.sh workstation "lab $action $EXAMPLE_LAB" >"$ACTION_OUT" 2>&1; then
     ok "'lab $action $EXAMPLE_LAB' executou com sucesso (código 0)"
   else
     RC=$?

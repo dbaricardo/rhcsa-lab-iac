@@ -34,7 +34,7 @@ espere ajustar detalhes.
    do usuário `student`, `truncate /etc/machine-id`) é específico do RHEL10
    e pode não se aplicar da mesma forma ao Rocky 10 — revise antes de usar.
 
-3. **`--os-variant`** em `scripts/build-box.sh`: `rhel10-unknown` deve ser
+3. **`--os-variant`** em `scripts/build-image.sh`: `rhel10-unknown` deve ser
    troncado para a variante correta do Rocky no `osinfo-db` do seu host
    (verifique com `osinfo-query os | grep -i rocky`).
 
@@ -49,5 +49,5 @@ espere ajustar detalhes.
 Se o objetivo final é praticar para o EX200, use RHEL10 real — é gratuito
 via Red Hat Developer Subscription for Individuals e elimina qualquer
 divergência de comportamento entre distribuições. Use Rocky apenas para
-testar a mecânica da infraestrutura (Vagrant, rede, discos extra, dashboard)
+testar a mecânica da infraestrutura (Terraform, rede, discos extra, dashboard)
 sem gastar um slot de sistema registrado.

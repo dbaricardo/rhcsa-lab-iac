@@ -10,7 +10,7 @@ propósito do curso. Cada `<lab>.sh` aqui é idempotente e roda como root no(s)
 host(s) do exercício (`meta.json` -> `hosts`), por exemplo:
 
 ```bash
-vagrant ssh servera -c 'sudo bash -s' < tests/solutions/users-groups-01.sh
+bash scripts/lab-ssh.sh servera 'sudo bash -s' < tests/solutions/users-groups-01.sh
 ```
 
 Exercícios com mais de um host (`nfs-autofs-01`) esperam ser chamados uma vez

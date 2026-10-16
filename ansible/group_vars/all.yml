@@ -1,8 +1,7 @@
 ---
-# Valores de fallback -- normalmente TODOS estes vêm de extra_vars injetadas
-# pelo Vagrantfile a partir de machines.yaml (ver `ansible.extra_vars` no
-# Vagrantfile). Só são usados se o playbook for rodado fora do `vagrant up`
-# (ex.: `ansible-playbook -i inventario ansible/site.yml` manual/CI).
+# Valores de fallback -- normalmente TODOS estes vêm do inventário que o
+# Terraform gera a partir de machines.yaml (output/inventory.yml, seção
+# all.vars). Só são usados se o playbook for rodado com outro inventário.
 lab_domain: lab.example.com
 lab_student_user: student
 lab_network_cidr: 192.168.56.0/24

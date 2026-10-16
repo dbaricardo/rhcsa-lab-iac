@@ -1,12 +1,14 @@
 .env
 *.iso
 *.qcow2
-*.box
 output/
-.vagrant/
 *.retry
 __pycache__/
 *.pyc
 .pytest_cache/
 .ansible/
 *.log
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log

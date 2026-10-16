@@ -11,7 +11,8 @@ Se você já tem tudo instalado e só quer o resumo rápido, veja o
 
 Você precisa de uma máquina Linux com suporte a virtualização de hardware
 (VT-x/AMD-V habilitado na BIOS/UEFI). As VMs deste laboratório rodam via
-**KVM/libvirt**, usando **Vagrant** como orquestrador.
+**KVM/libvirt**: o **Terraform** cria a rede, os discos e as VMs, e o
+**Ansible** configura tudo dentro delas.
 
 Confirme que a virtualização está disponível antes de instalar qualquer
 coisa:
@@ -27,7 +28,7 @@ Se não retornar nada, habilite VT-x/AMD-V na BIOS/UEFI antes de continuar.
 ```bash
 sudo dnf install -y @virtualization libvirt libvirt-daemon-kvm \
   virt-install guestfs-tools qemu-img ansible-core gettext python3 \
-  libvirt-devel gcc ruby-devel libxml2-devel pkgconf-pkg-config xorriso
+  python3-pyyaml openssh-clients xorriso
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt "$USER"
@@ -38,13 +39,14 @@ sudo usermod -aG libvirt "$USER"
 > anteriores e ainda válido em Fedora/CentOS Stream mais recentes -- se
 > `guestfs-tools` não existir no seu repositório, tente `libguestfs-tools`).
 
-Instale o Vagrant a partir do repositório oficial da HashiCorp (não está nos
-repositórios padrão do Fedora):
+Instale o Terraform a partir do repositório oficial da HashiCorp:
 
 ```bash
 sudo dnf config-manager addrepo --from-repofile=https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
-sudo dnf install -y vagrant
+sudo dnf install -y terraform
 ```
+
+(Em RHEL/Rocky, troque `fedora` por `RHEL` na URL do repofile.)
 
 ### Debian / Ubuntu (apt)
 
@@ -52,45 +54,43 @@ sudo dnf install -y vagrant
 sudo apt update
 sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients \
   virtinst libguestfs-tools qemu-utils ansible gettext-base python3 \
-  libvirt-dev ruby-dev build-essential pkg-config libxslt-dev libxml2-dev zlib1g-dev xorriso
+  python3-yaml openssh-client xorriso
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt,kvm "$USER"
 ```
 
-Instale o Vagrant a partir do repositório oficial da HashiCorp:
+Instale o Terraform a partir do repositório oficial da HashiCorp:
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install -y vagrant
+sudo apt update && sudo apt install -y terraform
 ```
 
 ### Nas duas distribuições
 
 Depois de instalar, **saia e entre de novo na sessão** (ou rode `newgrp
 libvirt`) para o grupo `libvirt` (e `kvm`, no Debian/Ubuntu) fazer efeito.
-Em seguida, instale o plugin do Vagrant para libvirt:
 
-```bash
-vagrant plugin install vagrant-libvirt
-```
-
-Instale também as collections Ansible usadas pelos roles (não vêm no
+Instale as collections Ansible usadas pelos roles (não vêm no
 `ansible-core`):
 
 ```bash
 ansible-galaxy collection install -r ansible/requirements.yml
 ```
 
-Confirme que tudo está funcionando:
+O provider do Terraform para libvirt (`dmacvicar/libvirt`) **não** precisa
+ser instalado à mão: o `make deploy` roda `terraform init`, que o baixa
+sozinho na primeira vez.
+
+Confirme que o libvirt está acessível para o seu usuário:
 
 ```bash
 virsh -c qemu:///system list
 ```
 
-Se retornar uma lista vazia sem erro, o libvirt está acessível para o seu
-usuário.
+Se retornar uma lista vazia sem erro, está tudo certo.
 
 ## 2. Conta Red Hat Developer + activation key
 
@@ -107,11 +107,13 @@ Subscription for Individuals** (gratuita).
      `console.redhat.com` -> ícone de perfil -> "My User Access" /
      "Account settings").
 
-Guarde os dois em um lugar seguro (não vão para o `.env`) — você vai usá-los
-para registrar manualmente cada uma das 3 VMs no passo 8, depois de `make
-up`. Isso é deliberado: se a activation key ficasse embutida na imagem e
-todas as 3 VMs clonadas se registrassem com a mesma identidade, elas
+Os dois vão para o `.env` no passo 4. O Ansible registra **cada VM
+individualmente, depois de clonada** — nunca a imagem golden. Isso é
+deliberado: se a imagem já saísse registrada, as 3 VMs clonadas
 compartilhariam o mesmo consumer ID na Red Hat (já causou conflito real).
+
+Sem conta Red Hat? Dá para testar a infraestrutura com `make
+deploy-offline` (passo 7), que serve os pacotes a partir da própria ISO.
 
 ## 3. Baixar a ISO do RHEL 10
 
@@ -138,12 +140,13 @@ Edite `.env` e preencha:
 | Variável | Valor |
 |---|---|
 | `RHEL_ISO_PATH` | Caminho absoluto da ISO baixada no passo 3 |
-| `STUDENT_PASSWORD` | Senha que você vai usar para o usuário `student` nas VMs (uso local apenas) |
+| `RHSM_ORG_ID` | Organization ID anotado no passo 2 |
+| `RHSM_ACTIVATION_KEY` | Activation key anotada no passo 2 |
+| `STUDENT_PASSWORD` | Senha do usuário `student` nas VMs (uso local apenas) |
 | `APPLY_SECURITY_UPDATES` | `false` (padrão, build mais rápido) ou `true` |
 
-Não há variável de subscription aqui — Organization ID e activation key do
-passo 2 só entram na jogada no passo 8, digitados manualmente por SSH em
-cada VM.
+`RHSM_ORG_ID` e `RHSM_ACTIVATION_KEY` podem ficar vazias se você for usar
+só o modo offline (`make deploy-offline`).
 
 `.env` nunca é commitado (está no `.gitignore`) — pode conter suas
 credenciais reais com segurança.
@@ -156,153 +159,117 @@ make check-env
 
 Esse comando valida, em modo relatório (não para no primeiro erro): binários
 necessários (`virt-install`, `virt-customize`, `qemu-img`, `virsh`,
-`vagrant`, `ansible`, `envsubst`, `python3`), o plugin `vagrant-libvirt`,
-presença de `/dev/kvm`, acesso a `qemu:///system` e todas as variáveis do
-`.env` (incluindo se `RHEL_ISO_PATH` de fato existe no disco).
+`terraform`, `ansible`, `envsubst`, `python3`, `ssh-keygen`, `xorriso`),
+presença de `/dev/kvm`, acesso a `qemu:///system`, o storage pool `default`
+do libvirt e todas as variáveis do `.env` (incluindo se `RHEL_ISO_PATH` de
+fato existe no disco).
 
 Só avance quando a saída terminar com `Tudo certo. Pode seguir com 'make
-build-box'.`. Se algo falhar, a própria saída indica o comando de correção.
+deploy'`. Se algo falhar, a própria saída indica o comando de correção.
 
-## 6. `make build-box`
-
-```bash
-make build-box
-```
-
-O que acontece (tudo automatizado, sem interação):
-
-1. Gera um par de chaves SSH novo em `output/student_key` (nunca
-   commitado) — é a chave que o Vagrant vai usar para conectar no
-   `student`, já que o box não tem usuário `vagrant` nem chave conhecida.
-2. Renderiza o kickstart (`kickstart/ks.cfg.tpl`) com suas variáveis de
-   `.env` e a chave pública gerada no passo anterior (a senha já entra como
-   hash SHA-512, nunca em texto plano).
-3. Cria um disco qcow2 de 20GB e roda `virt-install` contra a sua ISO,
-   injetando o kickstart via `--initrd-inject` — instalação 100%
-   desassistida.
-4. Espera o domínio desligar sozinho (o kickstart termina com `poweroff`).
-5. Roda um sysprep leve offline (`image/box-finalize.sh`, via
-   `virt-customize`): remove chaves SSH de host, limpa logs (incluindo
-   `anaconda-ks.cfg`, que carrega o hash da senha), corrige contexto
-   SELinux.
-6. Empacota o resultado como um box `vagrant-libvirt` e registra com
-   `vagrant box add`.
-
-**Tempo estimado:** normalmente entre 10 e 20 minutos, a maior parte gasta
-na instalação desassistida do RHEL (passo 2). Em hardware mais lento ou I/O
-em disco mecânico, pode levar mais.
-
-O que esperar no terminal: uma sequência de linhas `==> ...` marcando cada
-etapa, seguida pela saída "crua" do `virt-install` durante a instalação
-(sem interação necessária — é só acompanhar). Ao final, confirme:
+## 6. `make deploy`
 
 ```bash
-vagrant box list
-# deve listar: rhel10-rhcsa-base (libvirt, 0)
+make deploy
 ```
 
-Se algo falhar aqui, o erro mais comum é `RHEL_ISO_PATH` incorreto — revise
-o `.env` e rode `make check-env` de novo.
+Um único comando, sem interação, que encadeia três etapas:
 
-## 7. `make up`
+1. **Imagem golden** (`make build-image`, só se `output/` ainda não tiver a
+   imagem):
+   - gera um par de chaves SSH novo em `output/student_key` (nunca
+     commitado), usado pelo Ansible e pelos atalhos `make ssh-*`;
+   - renderiza o kickstart (`kickstart/ks.cfg.tpl`) com as variáveis do
+     `.env` e a chave pública (a senha entra como hash SHA-512, nunca em
+     texto plano);
+   - cria um disco qcow2 e roda `virt-install` contra a sua ISO, injetando
+     o kickstart — instalação 100% desassistida, que termina com
+     `poweroff`;
+   - roda um sysprep leve offline (`image/finalize.sh`, via
+     `virt-customize`): remove chaves SSH de host, limpa logs (incluindo
+     `anaconda-ks.cfg`, que carrega o hash da senha), corrige contexto
+     SELinux.
+2. **Infraestrutura** (`make infra`): `terraform apply` cria a rede NAT
+   `192.168.56.0/24`, os discos (clones copy-on-write da imagem golden + discos
+   extras da `serverb`) e as 3 VMs, cada uma com IP estático conforme
+   `machines.yaml`, e gera o inventário do Ansible em
+   `output/inventory.yml`.
+3. **Configuração** (`make provision`): o playbook `ansible/site.yml`
+   registra cada VM na subscription, cria o usuário `student`, configura o
+   SSH cruzado entre as VMs, instala os pacotes de cada papel, os
+   exercícios atribuídos a cada host e o dashboard web na `workstation`.
+
+**Tempo estimado:** na primeira vez, entre 15 e 30 minutos — a maior parte
+é a instalação desassistida do RHEL (10 a 20 minutos). Nas vezes seguintes,
+com a imagem já pronta, só as etapas 2 e 3 rodam (poucos minutos).
+
+O que esperar no terminal: linhas `==> ...` marcando cada etapa da imagem,
+a saída do `terraform apply` e, por fim, a saída do Ansible task a task. O
+`make deploy` termina chamando `make status`, que lista as VMs e imprime a
+URL do dashboard.
+
+Se algo falhar, cada etapa pode ser rodada de novo isoladamente (`make
+build-image`, `make infra`, `make provision`) — o Terraform e o Ansible são
+idempotentes, então reaplicar não duplica nada.
+
+## 7. Modo offline (opcional, sem subscription)
+
+Para testar a infraestrutura sem gastar um slot de subscription:
 
 ```bash
-make up
+make deploy-offline
 ```
 
-Isso gera `labs/catalog.json` (a partir dos `meta.json` de cada exercício em
-`labs/`) e roda `vagrant up --no-provision`, que cria as 3 VMs (`servera`,
-`serverb`, depois `workstation`, sempre por último) a partir do box golden,
-cada uma com IP estático conforme `machines.yaml` — **sem rodar o Ansible
-ainda**. O Ansible fica para o passo 9, depois de registrar a subscription.
+É o mesmo fluxo do passo 6, mas o Ansible não registra as VMs: os pacotes
+vêm da própria DVD ISO, servida por HTTP a partir do host. Não é um
+substituto de produção (sem updates/erratas) — ver
+[docs/troubleshooting.md](troubleshooting.md#modo-offline-via-iso).
 
-Confirme que as 3 VMs subiram:
+## 8. Conferir o acesso às VMs
 
 ```bash
-vagrant status
+make status
 ```
 
-Deve mostrar `workstation`, `servera` e `serverb`, todas em estado
-`running`.
+Deve listar `rhcsa-lab-workstation`, `rhcsa-lab-servera` e
+`rhcsa-lab-serverb` em estado `running`, seguido da URL do dashboard.
 
-## 8. Registrar a subscription manualmente em cada VM
-
-Este projeto **não** registra a subscription automaticamente — nem no box
-golden, nem via Ansible. Se as 3 VMs clonadas do mesmo box se registrassem
-com a mesma activation key embutida na imagem, elas compartilhariam o mesmo
-consumer ID na Red Hat (já causou conflito real). Por isso é um passo
-manual, uma vez por VM, usando o Organization ID e a activation key
-anotados no passo 2:
+Entre na `workstation`:
 
 ```bash
-vagrant ssh workstation -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
-vagrant ssh servera     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
-vagrant ssh serverb     -c 'sudo subscription-manager register --org=<ORG_ID> --activationkey=<ACTIVATION_KEY>'
+make ssh-workstation
 ```
 
-Se você tiver poucos slots disponíveis na sua subscription gratuita, veja
-[docs/troubleshooting.md](troubleshooting.md) (seção "Limite de sistemas
-simultâneos").
-
-> **Só testando a infraestrutura, sem gastar um slot de subscription?** Existe
-> um modo alternativo, `make reprovision-offline`, que serve os pacotes a
-> partir da própria DVD ISO em vez do registro manual acima -- ver
-> [docs/troubleshooting.md](troubleshooting.md#modo-offline-via-iso). Não é
-> um substituto de produção (sem updates/erratas) e pula este passo 8
-> inteiramente.
-
-## 9. `make reprovision`
-
-```bash
-make reprovision
-```
-
-Isso dispara o playbook Ansible (`ansible/site.yml`) contra as 3 VMs já no
-ar, provisionando tudo: usuário `student`, SSH cruzado entre as VMs,
-pacotes de cada papel, os exercícios atribuídos a cada host e o dashboard
-web na `workstation`. O role `common` falha cedo e com mensagem clara em
-qualquer VM que você tenha esquecido de registrar no passo 8.
-
-Acompanhe a saída do Ansible no terminal — ela mostra cada task rodando por
-host. Ao final, confirme o acesso SSH:
-
-```bash
-vagrant ssh workstation
-```
-
-Dentro da `workstation`, liste o catálogo de exercícios:
+Dentro dela, liste o catálogo de exercícios:
 
 ```bash
 lab list
 ```
 
 Isso deve imprimir a lista de exercícios disponíveis (número, id, host(s),
-título). Se `lab list` falhar ou vier vazia, confirme que `make
-reprovision` rodou até o fim sem erros do Ansible.
+título). Se `lab list` falhar ou vier vazia, confirme que o Ansible rodou
+até o fim sem erros (`make provision` de novo mostra o que falta).
 
-Saia da sessão SSH (`exit` ou `Ctrl+D`) quando terminar.
+Saia da sessão SSH (`exit` ou `Ctrl+D`) quando terminar. Os atalhos `make
+ssh-servera` e `make ssh-serverb` funcionam da mesma forma.
 
-## 10. Acessar o dashboard
+## 9. Acessar o dashboard
 
-```bash
-make status
-```
-
-A última linha imprime a URL do dashboard, por padrão:
+A URL impressa pelo `make status` é, por padrão:
 
 ```
 http://192.168.56.10:8421
 ```
 
-Abra essa URL no navegador do seu host (a máquina onde você rodou `vagrant
-up`, não dentro de nenhuma VM). Você deve ver a lista de exercícios e o
+Abra essa URL no navegador do seu host (a máquina onde você rodou `make
+deploy`, não dentro de nenhuma VM). Você deve ver a lista de exercícios e o
 status de progresso de cada um (inicialmente, todos pendentes).
 
 Se a página não carregar, confirme a origem permitida em `machines.yaml` ->
 `dashboard.allowed_source` — por padrão é a própria rede privada do lab
 (`192.168.56.0/24`), que já inclui a interface do libvirt no seu host.
 
-## 11. Resolver um exercício de ponta a ponta
+## 10. Resolver um exercício de ponta a ponta
 
 Vamos usar `users-groups-01` como exemplo — um exercício simples, de um
 único host (`servera`).
@@ -310,7 +277,7 @@ Vamos usar `users-groups-01` como exemplo — um exercício simples, de um
 Tudo começa e termina na `workstation`:
 
 ```bash
-vagrant ssh workstation
+make ssh-workstation
 lab start users-groups-01
 ```
 
@@ -318,20 +285,19 @@ Isso prepara o ambiente do exercício em `servera` (o dispatcher `lab`
 resolve automaticamente qual host usar, olhando o catálogo). A saída mostra
 `==> lab start users-groups-01 (servera)` seguido do resultado.
 
-Agora resolva o exercício de verdade. Abra outra sessão (a partir do seu
-host, ou de dentro da própria `workstation`) para a `servera`:
+Agora resolva o exercício de verdade. De dentro da própria `workstation`
+(como no exame), entre na `servera`:
 
 ```bash
-vagrant ssh servera
+ssh servera
 ```
 
-Leia as instruções do exercício (no dashboard, ou com `lab list` mais
-detalhes) e resolva com os comandos reais do RHEL (`useradd`, `groupadd`,
-`chage`, etc. — para este exercício específico). Quando terminar, saia da
-`servera`.
+(ou, a partir do seu host, `make ssh-servera`). Leia as instruções do
+exercício no dashboard e resolva com os comandos reais do RHEL
+(`useradd`, `groupadd`, `chage`, etc. — para este exercício específico).
+Quando terminar, saia da `servera`.
 
-De volta na `workstation` (ou numa nova sessão `vagrant ssh workstation`),
-avalie o resultado:
+De volta na `workstation`, avalie o resultado:
 
 ```bash
 lab grade users-groups-01
@@ -354,15 +320,15 @@ Isso reverte explicitamente o que `lab start` preparou (nunca reinvoca
 `start.sh` para isso — ver [troubleshooting.md](troubleshooting.md)),
 deixando `servera` pronta para o próximo exercício.
 
-## 12. `make destroy`
+## 11. `make destroy`
 
 Antes de destruir, se sua subscription gratuita tiver poucos slots, libere-os
 primeiro (opcional, mas evita ter que limpar depois pelo console web):
 
 ```bash
-vagrant ssh workstation -c 'sudo subscription-manager unregister' || true
-vagrant ssh servera     -c 'sudo subscription-manager unregister' || true
-vagrant ssh serverb     -c 'sudo subscription-manager unregister' || true
+for h in workstation servera serverb; do
+  bash scripts/lab-ssh.sh "$h" 'sudo subscription-manager unregister' || true
+done
 ```
 
 Quando terminar a sessão de estudo:
@@ -371,11 +337,11 @@ Quando terminar a sessão de estudo:
 make destroy
 ```
 
-Isso destrói as 3 VMs (`vagrant destroy -f`) — **o box golden
-`rhel10-rhcsa-base` não é removido**, então da próxima vez basta rodar `make
-up` de novo (sem precisar refazer `make build-box`), seguido de novo pelo
-registro manual da subscription (passo 8) e `make reprovision` — a menos
-que você queira recomeçar do zero com uma imagem base nova.
+Isso roda `terraform destroy`: remove as 3 VMs, os discos e a rede do lab —
+nada fica para trás no libvirt. **A imagem golden em `output/` não é
+removida**, então da próxima vez basta `make deploy` de novo, que pula a
+construção da imagem e só recria VMs + Ansible. Para recomeçar com uma
+imagem base nova, rode `make build-image` antes.
 
 ## Onde ir depois
 

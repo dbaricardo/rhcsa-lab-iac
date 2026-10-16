@@ -6,60 +6,80 @@ include .env
 export
 endif
 
-.PHONY: help check-env build-box up status destroy reprovision \
-	reprovision-offline offline-repo-stop \
-	ssh-workstation ssh-servera ssh-serverb lint catalog test-dashboard
+IMAGE_NAME  := $(shell python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['image'])")
+IMAGE       := output/$(IMAGE_NAME).qcow2
+INVENTORY   := output/inventory.yml
+TF          := terraform -chdir=terraform
+PLAYBOOK    := ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i $(INVENTORY) ansible/site.yml
+OFFLINE_URL := http://$(shell python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['network']['gateway'])"):8080
+
+.PHONY: help check-env catalog build-image infra provision provision-offline \
+	deploy deploy-offline status destroy offline-repo-stop \
+	ssh-workstation ssh-servera ssh-serverb lint test-dashboard
 
 help: ## Lista os targets disponíveis
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-check-env: ## Valida .env, libvirt, vagrant-libvirt, virt-install, ansible
+deploy: $(IMAGE) infra provision ## TUDO: imagem (se faltar) + VMs (Terraform) + Ansible, com subscription
+	@$(MAKE) --no-print-directory status
+
+deploy-offline: $(IMAGE) infra provision-offline ## TUDO sem subscription (repos da ISO, modo teste)
+	@$(MAKE) --no-print-directory status
+
+check-env: ## Valida .env, libvirt, terraform, virt-install, ansible
 	@bash scripts/check-env.sh
 
 catalog: ## Gera labs/catalog.json a partir de labs/*/meta.json
 	@python3 scripts/build-catalog.py
 
-build-box: check-env ## Constrói o box RHEL10 golden via virt-install + kickstart
-	@bash scripts/build-box.sh
+$(IMAGE):
+	@bash scripts/check-env.sh
+	@bash scripts/build-image.sh
 
-up: catalog ## Sobe as 3 VMs SEM provisionar (registre a subscription e rode 'make reprovision')
-	@vagrant up --no-provision
-	@echo ""
-	@echo "VMs no ar, ainda SEM Ansible. Registre a subscription manualmente"
-	@echo "em cada uma (workstation/servera/serverb) -- ver"
-	@echo "docs/tutorial-fim-a-fim.md, passo 8 -- e então rode 'make reprovision'."
+build-image: check-env ## (Re)constrói a imagem golden RHEL10 via virt-install + kickstart
+	@bash scripts/build-image.sh
+
+infra: catalog ## Cria/atualiza rede, discos e as 3 VMs via Terraform (sem Ansible)
+	@test -f $(IMAGE) || { echo "ERRO: $(IMAGE) não existe -- rode 'make build-image'." >&2; exit 1; }
+	@$(TF) init -input=false
+	@$(TF) apply -input=false -auto-approve
+
+provision: catalog ## Roda o Ansible (registra a subscription se RHSM_* estiver no .env)
+	@$(PLAYBOOK)
+
+provision-offline: catalog ## Roda o Ansible SEM subscription (repos servidos da ISO)
+	@bash scripts/offline-repo.sh start
+	@$(PLAYBOOK) -e lab_offline_repo_url=$(OFFLINE_URL)
 
 status: ## Mostra o estado das VMs e a URL do dashboard
-	@vagrant status
+	@virsh -c qemu:///system list --all | grep -E 'Id|---|rhcsa-lab' || true
 	@echo ""
-	@echo "Dashboard: http://$$(python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['machines'][yaml.safe_load(open('machines.yaml'))['dashboard']['host']]['ip'])"):$$(python3 -c "import yaml;print(yaml.safe_load(open('machines.yaml'))['dashboard']['port'])")"
+	@$(TF) output -raw dashboard_url 2>/dev/null | sed 's/^/Dashboard: /' && echo "" || \
+		echo "Sem estado do Terraform ainda -- rode 'make deploy'."
 
-reprovision: catalog ## Roda o Ansible novamente sem recriar as VMs
-	@vagrant provision
-
-reprovision-offline: catalog ## Roda o Ansible SEM subscription real (modo teste, ver docs/troubleshooting.md)
-	@bash scripts/offline-repo.sh start
-	@LAB_OFFLINE_REPO_URL="http://192.168.56.1:8080" vagrant provision
+destroy: offline-repo-stop ## Destrói as 3 VMs, discos e rede (mantém a imagem golden)
+	@$(TF) init -input=false >/dev/null
+	@$(TF) destroy -input=false -auto-approve
+	@rm -f $(INVENTORY)
 
 offline-repo-stop: ## Para o servidor HTTP do modo offline e desmonta a ISO
 	@bash scripts/offline-repo.sh stop
 
-destroy: ## Destroi as 3 VMs (não remove o box)
-	@vagrant destroy -f
-
 ssh-workstation: ## SSH na workstation
-	@vagrant ssh workstation
+	@bash scripts/lab-ssh.sh workstation
 
 ssh-servera: ## SSH na servera
-	@vagrant ssh servera
+	@bash scripts/lab-ssh.sh servera
 
 ssh-serverb: ## SSH na serverb
-	@vagrant ssh serverb
+	@bash scripts/lab-ssh.sh serverb
 
-lint: ## ansible-lint + shellcheck em roles e labs
+lint: ## terraform fmt/validate + ansible-lint + shellcheck
+	@$(TF) fmt -check -recursive
+	@$(TF) init -backend=false -input=false >/dev/null && $(TF) validate
 	@ansible-lint ansible/ || true
-	@shellcheck labs/*/*.sh scripts/*.sh image/*.sh || true
+	@shellcheck labs/*/*.sh scripts/*.sh image/*.sh tests/*/*.sh || true
 
 test-dashboard: ## Roda a suíte de testes do dashboard portado
 	@cd ansible/roles/dashboard/files && python3 -m pytest tests -v

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Valida pré-requisitos antes de build-box/up. Roda em modo "relatório": não
+# Valida pré-requisitos antes de build-image/deploy. Roda em modo "relatório": não
 # para no primeiro erro, lista tudo que falhou no final.
 set -uo pipefail
 
@@ -24,7 +24,7 @@ check_bin virt-install "pacote 'virt-install' (libvirt-client / virtinst)"
 check_bin virt-customize "pacote 'guestfs-tools' no RHEL/Rocky/Fedora (dnf) -- em Debian/Ubuntu (apt) o nome ainda é 'libguestfs-tools'"
 check_bin qemu-img "pacote 'qemu-img'"
 check_bin virsh "pacote 'libvirt-client'"
-check_bin vagrant "https://www.vagrantup.com/downloads"
+check_bin terraform "https://developer.hashicorp.com/terraform/install"
 check_bin ansible "pacote 'ansible' ou 'ansible-core'"
 check_bin envsubst "pacote 'gettext'"
 check_bin python3 "pacote 'python3'"
@@ -32,24 +32,11 @@ check_bin ssh-keygen "pacote 'openssh-clients'"
 check_bin xorriso "pacote 'xorriso' (usado para validar RHEL_ISO_PATH abaixo)"
 
 echo ""
-echo "== Plugin vagrant-libvirt =="
-if vagrant plugin list 2>/dev/null | grep -q vagrant-libvirt; then
-  ok "plugin vagrant-libvirt instalado"
-else
-  fail "plugin vagrant-libvirt não instalado — rode: vagrant plugin install vagrant-libvirt"
-fi
-
-echo ""
-echo "== Collections Ansible (ansible.posix, community.general) =="
+echo "== Collections Ansible (ansible.posix) =="
 if ansible-galaxy collection list 2>/dev/null | grep -q 'ansible\.posix'; then
   ok "collection ansible.posix instalada"
 else
   fail "collection ansible.posix ausente — rode: ansible-galaxy collection install -r ansible/requirements.yml"
-fi
-if ansible-galaxy collection list 2>/dev/null | grep -q 'community\.general'; then
-  ok "collection community.general instalada"
-else
-  fail "collection community.general ausente — rode: ansible-galaxy collection install -r ansible/requirements.yml"
 fi
 
 echo ""
@@ -66,6 +53,13 @@ if virsh -c qemu:///system list >/dev/null 2>&1; then
   ok "conexão qemu:///system funcionando (usuário no grupo libvirt?)"
 else
   fail "sem acesso a qemu:///system — adicione seu usuário ao grupo 'libvirt' e reabra a sessão"
+fi
+# terraform/variables.tf usa o pool "default" (padrão de toda instalação do
+# libvirt), mas em hosts recém-instalados ele às vezes nem foi criado.
+if virsh -c qemu:///system pool-info default >/dev/null 2>&1; then
+  ok "storage pool 'default' existe"
+else
+  fail "storage pool 'default' não existe — rode: sudo virsh pool-define-as default dir --target /var/lib/libvirt/images && sudo virsh pool-build default && sudo virsh pool-start default && sudo virsh pool-autostart default"
 fi
 
 echo ""
@@ -109,7 +103,7 @@ else
 fi
 
 # qemu:///system roda os domínios como o usuário de sistema 'qemu' (não
-# root), mesmo quando virt-install/build-box.sh são executados como root --
+# root), mesmo quando virt-install/build-image.sh são executados como root --
 # esse usuário precisa de permissão de busca (x) em TODO diretório pai até
 # o repositório e até a ISO, senão virt-install só falha bem no final da
 # instalação ("Cannot access storage file... Permission denied"), depois de
@@ -150,13 +144,13 @@ check_qemu_pode_alcancar() {
 
 echo ""
 echo "== Acesso do usuário 'qemu' aos caminhos do build =="
-check_qemu_pode_alcancar "$ROOT_DIR" "repositório (output/ do box golden nasce aqui)"
+check_qemu_pode_alcancar "$ROOT_DIR" "repositório (output/ da imagem golden nasce aqui)"
 [ -n "${RHEL_ISO_PATH:-}" ] && [ -f "${RHEL_ISO_PATH:-}" ] \
   && check_qemu_pode_alcancar "$RHEL_ISO_PATH" "RHEL_ISO_PATH"
 
 echo ""
 if [ "$FAILURES" -eq 0 ]; then
-  echo "Tudo certo. Pode seguir com 'make build-box'."
+  echo "Tudo certo. Pode seguir com 'make deploy' (ou 'make deploy-offline')."
   exit 0
 else
   echo "$FAILURES verificação(ões) falharam. Corrija antes de continuar" \

@@ -2,12 +2,15 @@
 
 ## Topologia
 
-Três VMs libvirt, todas clonadas do mesmo box golden `rhel10-rhcsa-base`,
-ligadas por uma rede privada libvirt (`machines.yaml` -> `network`), com IP
-estático por VM (nunca DHCP na topologia final):
+Três VMs libvirt criadas pelo Terraform (`terraform/`), todas clones
+copy-on-write da mesma imagem golden `rhel10-rhcsa-base`, ligadas por uma
+rede NAT libvirt (`machines.yaml` -> `network`). Cada VM tem IP fixo, via
+reserva DHCP por MAC no dnsmasq da rede — a imagem não precisa saber nada da
+topologia. A NAT dá saída para a internet (subscription e repositórios da
+Red Hat):
 
 ```
-                         rede privada libvirt "rhcsa_lab"
+                         rede NAT libvirt "rhcsa_lab"
                          192.168.56.0/24 (gateway 192.168.56.1)
       host (seu PC) ────────────────┬──────────────────────────┐
                                      │                          │
@@ -39,10 +42,39 @@ estático por VM (nunca DHCP na topologia final):
   partição/LVM/filesystem que precisam de um disco do zero.
 
 Toda a especificação (nomes, IPs, memória, CPUs, discos extra) vem de um
-único arquivo, `machines.yaml` — é a fonte de verdade lida tanto pelo
-`Vagrantfile` (Ruby, via `YAML.load_file`) quanto pelos roles Ansible (via
-`lookup('file', ...) | from_yaml`) quanto por `scripts/build-box.sh`. Isso
-evita que a topologia fique duplicada e divergente entre Vagrant e Ansible.
+único arquivo, `machines.yaml` — é a fonte de verdade lida pelo Terraform
+(`yamldecode(file(...))` em `terraform/main.tf`), pelos roles Ansible (via
+`lookup('file', ...) | from_yaml`) e por `scripts/build-image.sh`. Isso evita
+que a topologia fique duplicada e divergente entre Terraform e Ansible.
+
+## Fluxo de deploy
+
+```
+make deploy
+  ├─ output/rhel10-rhcsa-base.qcow2 existe?  não → scripts/build-image.sh
+  │     virt-install + kickstart → virt-customize (image/finalize.sh)
+  ├─ make infra      → terraform apply (terraform/)
+  │     rede NAT + volume base + 3 discos raiz CoW + discos extra
+  │     + 3 domínios + output/inventory.yml (inventário do Ansible)
+  └─ make provision  → ansible-playbook -i output/inventory.yml ansible/site.yml
+        espera SSH → hostname → subscription → pacotes → exercícios
+        → dispatcher lab → dashboard
+```
+
+- **Terraform cuida só do que existe fora das VMs** (rede, discos,
+  domínios). O estado (`terraform/terraform.tfstate`, fora do git) é o que
+  permite ao `make destroy` remover exatamente o que foi criado.
+- **Ansible cuida de tudo dentro das VMs.** O inventário é gerado pelo
+  próprio Terraform (`local_file`), com as variáveis que os roles esperam
+  (`lab_domain`, `dashboard_port`, IPs etc.).
+- **Subscription**: nunca na imagem (as 3 VMs clonadas compartilhariam a
+  mesma identidade na Red Hat). Cada VM é registrada pelo role `common`
+  depois de clonada, com `RHSM_ORG_ID`/`RHSM_ACTIVATION_KEY` do `.env`. Sem
+  essas variáveis, o playbook confere se você registrou à mão e falha cedo
+  se não. No modo offline (`make deploy-offline`) o registro é pulado e
+  BaseOS/AppStream vêm da ISO, servidos por HTTP no gateway da rede.
+- O provider `dmacvicar/libvirt` está fixado em `0.8.3`: a linha 0.9.x
+  reescreveu o schema inteiro e quebraria `main.tf`.
 
 ## Dashboard não é uma 4ª VM
 
@@ -104,8 +136,11 @@ de espalhada em cada script de exercício.
 
 ## Ordem de execução do Ansible
 
-`site.yml` roda em 4 plays, na ordem:
+`site.yml` roda em 5 plays, na ordem:
 
+0. Uma play sem fatos contra `hosts: all` que espera as VMs recém-criadas
+   aceitarem SSH (`wait_for_connection`) e fixa o hostname FQDN — a imagem
+   golden vem como `rhcsa-lab-base`.
 1. `common` + `ssh_crosshost` contra `hosts: all` — precisam rodar juntos,
    na mesma play, porque `ssh_crosshost` usa `hostvars` para levar a chave
    pública gerada na `workstation` até `servera`/`serverb` na mesma
@@ -118,23 +153,20 @@ de espalhada em cada script de exercício.
    (com `backend.py`, importado por `lab` via `sys.path.insert`) já exista
    quando o dispatcher `lab` for instalado.
 
-O `Vagrantfile` dispara esse playbook uma única vez, como provisioner da
-**última** VM criada (`workstation`, por ordenação determinística em
-`ORDERED_NAMES`), com `ansible.limit = 'all'` — ou seja, o Ansible só roda
-depois que as 3 VMs já existem, evitando condição de corrida no role
-`ssh_crosshost` (que precisa de `servera`/`serverb` de pé para autorizar a
-chave da `workstation` neles).
+O playbook só roda depois que o `terraform apply` termina, ou seja, com as
+3 VMs já criadas — o role `ssh_crosshost` precisa de `servera`/`serverb` de
+pé para autorizar neles a chave da `workstation`.
 
 ## Sem Packer
 
-O box golden é construído direto por `virt-install` + kickstart
-(`scripts/build-box.sh`), sem passar por Packer. Decisão deliberada: reduzir
+A imagem golden é construída direto por `virt-install` + kickstart
+(`scripts/build-image.sh`), sem passar por Packer. Decisão deliberada: reduzir
 o número de ferramentas que o usuário final precisa instalar e aprender.
 `virt-install` já é necessário de qualquer forma (é o mecanismo usado para a
 instalação desassistida), então evitar Packer elimina uma dependência
 inteira sem perder determinismo — o fluxo inteiro (kickstart -> instalação
--> sysprep offline via `virt-customize` -> empacotamento como box
-`vagrant-libvirt`) é reproduzível e não depende de nenhum builder externo.
+-> sysprep offline via `virt-customize` -> qcow2 usado como volume base pelo
+Terraform) é reproduzível e não depende de nenhum builder externo.
 
 ## RHEL 10 real, não uma distribuição derivada
 

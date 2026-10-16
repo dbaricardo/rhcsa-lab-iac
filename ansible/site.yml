@@ -1,9 +1,22 @@
 ---
-# Playbook principal, disparado automaticamente por `vagrant up`/`vagrant
-# provision` (ver Vagrantfile, ansible.playbook = 'ansible/site.yml',
-# ansible.limit = 'all'). Ordem: infraestrutura comum a todos os hosts
-# primeiro (common + ssh_crosshost dependem de rodar juntos, na mesma play,
-# para o truque de hostvars funcionar), depois os papéis específicos.
+# Playbook principal, rodado por `make provision` (ou `make deploy`) contra o
+# inventário que o Terraform gera em output/inventory.yml. Ordem: esperar as
+# VMs recém-criadas aceitarem SSH, infraestrutura comum a todos os hosts
+# (common + ssh_crosshost dependem de rodar juntos, na mesma play, para o
+# truque de hostvars funcionar), depois os papéis específicos.
+
+- name: RHCSA lab - esperar as VMs subirem e fixar o hostname
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Esperar SSH (VMs acabaram de ser criadas pelo Terraform)
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Hostname FQDN de machines.yaml (a imagem golden vem como rhcsa-lab-base)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}.{{ lab_domain }}"
 
 - name: RHCSA lab - infraestrutura comum (usuário, hosts, SELinux, SSH cruzado)
   hosts: all

@@ -1,13 +1,13 @@
 #version=RHEL10
-# Kickstart 100% desassistido do box golden "rhel10-rhcsa-base".
-# Renderizado por scripts/build-box.sh (envsubst) a partir de .env e de uma
+# Kickstart 100% desassistido da imagem golden "rhel10-rhcsa-base".
+# Renderizado por scripts/build-image.sh (envsubst) a partir de .env e de uma
 # chave SSH gerada localmente — os únicos placeholders substituídos são
 # ${STUDENT_USER}, ${STUDENT_PASSWORD_HASH} e ${STUDENT_SSH_PUBKEY}. Tudo o
 # mais aqui é literal.
 #
 # A subscription (Red Hat Developer Subscription for Individuals) NÃO é
-# registrada aqui: cada VM clonada deste box precisa do seu próprio registro
-# (registrar 1x no box golden faria as 3 VMs clonadas compartilharem o mesmo
+# registrada aqui: cada VM clonada desta imagem precisa do seu próprio registro
+# (registrar 1x na imagem golden faria as 3 VMs clonadas compartilharem o mesmo
 # consumer ID na Red Hat, o que já deu conflito real). Ver
 # docs/tutorial-fim-a-fim.md, passo 8, para o comando manual pós-boot.
 
@@ -21,7 +21,7 @@ firstboot --disable
 # Rede: só o suficiente para a instalação (o curl da 4a chave GPG no %post
 # precisa de saida para a internet via a rede NAT padrao do libvirt usada
 # pelo virt-install). A topologia real de estudo (IP fixo por VM) e aplicada
-# depois pelo Vagrant/Ansible, nao aqui, para o box golden ficar
+# depois pelo Terraform/Ansible, nao aqui, para a imagem golden ficar
 # independente da topologia de qualquer clone.
 #
 # --device=link (escolhe "o primeiro dispositivo com link up") falha de
@@ -42,14 +42,14 @@ firewall --enabled --service=ssh
 zerombr
 clearpart --all --initlabel
 # Autopart cobre so o disco de instalacao. Discos extra de storage/LVM sao
-# anexados DEPOIS pelo Vagrant/libvirt, sempre brutos (sem particionar aqui),
+# anexados DEPOIS pelo Terraform/libvirt, sempre brutos (sem particionar aqui),
 # para os proprios exercicios praticarem pvcreate/mkfs do zero.
 autopart --type=lvm --fstype=xfs
 
 user --name=${STUDENT_USER} --groups=wheel --iscrypted --password=${STUDENT_PASSWORD_HASH}
 
 # Termina com poweroff (nao reboot) para o "virt-install --wait" de
-# scripts/build-box.sh detectar o fim da instalacao de forma deterministica.
+# scripts/build-image.sh detectar o fim da instalacao de forma deterministica.
 poweroff
 
 %packages
@@ -73,7 +73,7 @@ set -eux
 #
 # NÃO fatal de propósito (ao contrário do resto deste %post, que usa
 # --erroronfail + set -e): a rede de saída do domínio de BUILD depende do
-# ambiente onde `make build-box` roda (proxy, firewall, NAT aninhado em
+# ambiente onde `make build-image` roda (proxy, firewall, NAT aninhado em
 # testes) e já foi vista falhando/travando aqui em produção real -- sem o
 # --max-time, um curl sem rede que apenas trava (em vez de falhar rápido)
 # deixa a instalação inteira pendurada num prompt de erro que
@@ -96,10 +96,10 @@ fi
 echo "${STUDENT_USER} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${STUDENT_USER}"
 chmod 0440 "/etc/sudoers.d/${STUDENT_USER}"
 
-# --- Chave pública SSH gerada por scripts/build-box.sh (par fica em
-# output/, nunca commitado, ver .gitignore). Sem usuário "vagrant" nem a
-# chave insegura padrão neste box, isto é o único jeito de o 1o
-# "vagrant up" conseguir autenticar -- ver config.ssh.* no Vagrantfile.
+# --- Chave pública SSH gerada por scripts/build-image.sh (par fica em
+# output/, nunca commitado, ver .gitignore). É a chave com que o Ansible
+# entra nas VMs (ansible_ssh_private_key_file no inventário gerado pelo
+# Terraform) -- sem ela o 1o provisionamento não autentica.
 install -d -m 0700 -o "${STUDENT_USER}" -g "${STUDENT_USER}" "/home/${STUDENT_USER}/.ssh"
 echo "${STUDENT_SSH_PUBKEY}" > "/home/${STUDENT_USER}/.ssh/authorized_keys"
 chmod 0600 "/home/${STUDENT_USER}/.ssh/authorized_keys"

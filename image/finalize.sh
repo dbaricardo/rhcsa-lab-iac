@@ -1,7 +1,7 @@
 #!/bin/bash
-# Sysprep leve do box golden, rodado OFFLINE contra o disco via
-# `virt-customize -a <qcow2> --run image/box-finalize.sh` (libguestfs — sem
-# rede, sem boot real). Chamado por scripts/build-box.sh logo após o
+# Sysprep leve da imagem golden, rodado OFFLINE contra o disco via
+# `virt-customize -a <qcow2> --run image/finalize.sh` (libguestfs — sem
+# rede, sem boot real). Chamado por scripts/build-image.sh logo após o
 # kickstart terminar (VM desligada).
 set -euo pipefail
 

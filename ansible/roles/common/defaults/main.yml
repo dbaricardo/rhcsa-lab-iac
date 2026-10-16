@@ -8,3 +8,9 @@
 # docs/troubleshooting.md, seção "Modo offline via ISO"). Não é um substituto
 # de produção: não traz updates/erratas, só o conteúdo congelado da ISO.
 lab_offline_repo_url: ""
+
+# Registro automático da subscription (Red Hat Developer Subscription for
+# Individuals, gratuita), vindo do .env via ambiente do `make`. Vazio = não
+# registra automaticamente (ver tasks/main.yml).
+lab_rhsm_org_id: "{{ lookup('ansible.builtin.env', 'RHSM_ORG_ID') }}"
+lab_rhsm_activation_key: "{{ lookup('ansible.builtin.env', 'RHSM_ACTIVATION_KEY') }}"

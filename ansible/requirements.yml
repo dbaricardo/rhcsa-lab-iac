@@ -3,4 +3,3 @@
 # Instalar com: ansible-galaxy collection install -r ansible/requirements.yml
 collections:
   - name: ansible.posix   # firewalld, selinux, authorized_key
-  - name: community.general   # rpm_key

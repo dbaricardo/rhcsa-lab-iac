@@ -1,7 +1,7 @@
 #!/bin/bash
 # Serve BaseOS/AppStream da DVD ISO (RHEL_ISO_PATH) via HTTP simples, para o
 # modo TESTE/aceitação sem subscription real (ver docs/troubleshooting.md,
-# seção "Modo offline via ISO"). Usado por `make reprovision-offline`.
+# seção "Modo offline via ISO"). Usado por `make provision-offline` / `make deploy-offline`.
 #
 # Não é um espelho de produção: sem updates/erratas, só o conteúdo
 # congelado da ISO no momento do download. Serve apenas na rede privada do
@@ -10,6 +10,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# shellcheck disable=SC1091
 [ -f .env ] && source .env
 
 MNT_DIR="$ROOT_DIR/output/iso-mnt"
@@ -33,6 +34,15 @@ start() {
     echo "==> offline-repo já está rodando (PID $(cat "$PID_FILE"))."
     exit 0
   fi
+  # PID file perdido/desatualizado com um servidor antigo ainda segurando a
+  # porta (bug real: "Address already in use" num 2o start) -- derruba antes.
+  stop_server
+
+  ip -4 addr show 2>/dev/null | grep -q "inet ${BIND_IP}/" || {
+    echo "ERRO: nenhuma interface com ${BIND_IP} -- a rede do lab não existe ainda." \
+      "Rode 'make infra' antes." >&2
+    exit 1
+  }
 
   mkdir -p "$MNT_DIR"
   if ! mountpoint -q "$MNT_DIR"; then
@@ -67,11 +77,23 @@ start() {
   echo "    LAB_OFFLINE_REPO_URL=http://${BIND_IP}:${PORT}"
 }
 
-stop() {
+# Mata o servidor pelo PID file e, por garantia, qualquer http.server antigo
+# nesta porta/IP; espera ele sair de fato, senão o umount logo depois falha
+# com "target is busy" (o processo tem o ponto de montagem como cwd).
+stop_server() {
   if [ -f "$PID_FILE" ]; then
     kill "$(cat "$PID_FILE")" >/dev/null 2>&1 || true
     rm -f "$PID_FILE"
   fi
+  pkill -f "http.server ${PORT} --bind ${BIND_IP}" >/dev/null 2>&1 || true
+  for _ in $(seq 1 20); do
+    pgrep -f "http.server ${PORT} --bind ${BIND_IP}" >/dev/null 2>&1 || return 0
+    sleep 0.5
+  done
+}
+
+stop() {
+  stop_server
   if mountpoint -q "$MNT_DIR" 2>/dev/null; then
     sudo umount "$MNT_DIR"
   fi

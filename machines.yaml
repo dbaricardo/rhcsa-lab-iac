@@ -1,9 +1,10 @@
 # Especificação central da topologia do lab RHCSA.
-# Vagrantfile, scripts/generate-inventory.py e os grupos do Ansible leem este
-# arquivo — é a única fonte de verdade para hostnames, IPs, specs e discos.
+# terraform/main.tf (VMs, rede, discos e inventário do Ansible) e os roles
+# Ansible leem este arquivo — é a única fonte de verdade para hostnames, IPs,
+# specs e discos.
 
 domain: lab.example.com
-box: rhel10-rhcsa-base
+image: rhel10-rhcsa-base
 
 network:
   libvirt_name: rhcsa_lab
