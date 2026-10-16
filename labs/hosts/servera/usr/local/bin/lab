@@ -1,0 +1,107 @@
+#!/bin/bash
+# lab — dispatcher fiel à sintaxe do RH199 (student@workstation:~$ lab start <nome>)
+#
+# A ferramenta oficial é proprietária do Red Hat Training e só roda no
+# classroom (workstation + RPMs de conteúdo que não existem fora dele).
+# Este dispatcher roda scripts equivalentes instalados em
+# /usr/local/lib/lab-scripts/<nome>.sh (subcomando "start") e
+# /usr/local/lib/lab-finish/<nome>.sh (subcomando "finish"), um por
+# laboratório oficial do RH199 Rapid Track (RHEL10) documentado em
+# wiki/rhcsa/.
+#
+# "lab finish <nome>" une as duas ferramentas oficiais "lab grade" (avalia
+# o que foi feito, mostra nota fração + percentual) e "lab finish" (limpa
+# o ambiente) num único comando, por decisão do usuário: sempre avalia E
+# limpa em seguida, sem confirmação extra.
+#
+# Os labs "examsim-*" (simulado YouTube kBsMuA-DA9E) adicionam um terceiro
+# subcomando, "grade" — avaliação isolada e NÃO destrutiva, pra treinar sob
+# pressão e conferir sem perder o estado. Nesses labs "finish" também roda
+# a avaliação primeiro (mesma UX dos 25 labs oficiais) e limpa em seguida.
+#
+# Uso: lab start  <nome-do-lab>
+#      lab grade  <nome-do-lab>
+#      lab finish <nome-do-lab>
+
+set -u
+START_DIR=/usr/local/lib/lab-scripts
+GRADE_DIR=/usr/local/lib/lab-grade
+FINISH_DIR=/usr/local/lib/lab-finish
+
+usage() {
+    echo "Uso: lab start  <nome-do-lab>"
+    echo "     lab grade  <nome-do-lab>"
+    echo "     lab finish <nome-do-lab>"
+    echo
+    echo "Labs com 'start' nesta VM:"
+    ls "$START_DIR" 2>/dev/null | sed 's/\.sh$//' | sort | sed 's/^/  /'
+    echo
+    echo "Labs com 'grade' nesta VM:"
+    ls "$GRADE_DIR" 2>/dev/null | sed 's/\.sh$//' | sort | sed 's/^/  /'
+    echo
+    echo "Labs com 'finish' nesta VM:"
+    ls "$FINISH_DIR" 2>/dev/null | sed 's/\.sh$//' | sort | sed 's/^/  /'
+    exit 1
+}
+
+[ $# -ge 1 ] || usage
+SUBCOMMAND=$1
+shift
+
+case "$SUBCOMMAND" in
+    start)
+        [ $# -eq 1 ] || usage
+        NOME=$1
+        SCRIPT="$START_DIR/$NOME.sh"
+        if [ ! -f "$SCRIPT" ]; then
+            echo "lab: '$NOME' não é um lab conhecido nesta VM (start)." >&2
+            echo >&2
+            usage
+        fi
+        echo "==> lab start $NOME"
+        bash "$SCRIPT"
+        RC=$?
+        if [ $RC -eq 0 ]; then
+            echo "==> Pronto. Estado inicial de '$NOME' preparado."
+        else
+            echo "==> ERRO ao preparar '$NOME' (código $RC)." >&2
+        fi
+        exit $RC
+        ;;
+    grade)
+        [ $# -eq 1 ] || usage
+        NOME=$1
+        SCRIPT="$GRADE_DIR/$NOME.sh"
+        if [ ! -f "$SCRIPT" ]; then
+            echo "lab: '$NOME' não tem avaliação (grade) isolada nesta VM." >&2
+            echo >&2
+            usage
+        fi
+        echo "==> lab grade $NOME"
+        bash "$SCRIPT"
+        exit $?
+        ;;
+    finish)
+        [ $# -eq 1 ] || usage
+        NOME=$1
+        SCRIPT="$FINISH_DIR/$NOME.sh"
+        if [ ! -f "$SCRIPT" ]; then
+            echo "lab: '$NOME' não é um lab conhecido nesta VM (finish)." >&2
+            echo >&2
+            usage
+        fi
+        GRADE_SCRIPT="$GRADE_DIR/$NOME.sh"
+        if [ -f "$GRADE_SCRIPT" ]; then
+            echo "==> lab grade $NOME (antes de limpar)"
+            bash "$GRADE_SCRIPT" || true
+            echo
+        fi
+        echo "==> lab finish $NOME (avaliação + limpeza)"
+        bash "$SCRIPT"
+        RC=$?
+        exit $RC
+        ;;
+    *)
+        usage
+        ;;
+esac

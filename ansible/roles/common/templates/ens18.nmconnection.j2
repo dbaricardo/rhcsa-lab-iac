@@ -1,0 +1,21 @@
+[connection]
+id=ens18
+uuid={{ ('rhcsa-lab-ens18-' ~ inventory_hostname) | to_uuid }}
+type=ethernet
+autoconnect-priority=-999
+interface-name=ens18
+
+[ethernet]
+
+[ipv4]
+address1={{ lab_hosts_ip[inventory_hostname] }}/{{ lab_network_cidr.split('/')[1] }}
+dns={{ lab_dns_servers | join(';') }};
+dns-search={{ lab_domain }};
+gateway={{ lab_gateway_ip }}
+method=manual
+
+[ipv6]
+addr-gen-mode=eui64
+method=auto
+
+[proxy]

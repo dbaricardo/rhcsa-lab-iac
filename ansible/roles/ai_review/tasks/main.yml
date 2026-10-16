@@ -1,0 +1,115 @@
+---
+# Roda na workstation (site.yml). Duas partes independentes e opcionais:
+#  1. Gravação de terminal (rhcsa_recording_enabled): /etc/profile.d/zz-rhcsa-rec.sh
+#     + /etc/tmpfiles.d/rhcsa-rec.conf em servera, serverb e workstation
+#     (delegado). Usa `script` do util-linux (BaseOS, sem EPEL).
+#  2. Revisão por IA (ai_review_enabled): ai_review.py em /opt/rhcsa-lab-dashboard,
+#     /etc/rhcsa-ai-review.conf e a chave ~student/.ssh/rhcsa_ai_review.
+#     O lab_wrapper só dispara a revisão se ai_review.py existir, então
+#     desligar = remover o script; o `lab finish` segue igual, sem revisão.
+# A coleta das gravações pelo ai_review.py usa SSH do student para
+# root@servera/serverb/localhost (mesma confiança do dispatcher original).
+
+- name: Gravação de terminal — instalar util-linux (fornece /usr/bin/script)
+  ansible.builtin.dnf:
+    name: util-linux
+    state: present
+  delegate_to: "{{ item }}"
+  loop: "{{ rhcsa_recording_hosts }}"
+  when: rhcsa_recording_enabled | bool
+
+- name: Gravação de terminal — tmpfiles (/var/log/rhcsa-rec 1733, retenção de 14 dias)
+  ansible.builtin.copy:
+    src: rhcsa-rec.conf
+    dest: /etc/tmpfiles.d/rhcsa-rec.conf
+    owner: root
+    group: root
+    mode: "0644"
+  delegate_to: "{{ item }}"
+  loop: "{{ rhcsa_recording_hosts }}"
+  when: rhcsa_recording_enabled | bool
+
+- name: Gravação de terminal — criar /var/log/rhcsa-rec agora
+  ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/rhcsa-rec.conf
+  delegate_to: "{{ item }}"
+  loop: "{{ rhcsa_recording_hosts }}"
+  changed_when: false
+  when: rhcsa_recording_enabled | bool
+
+- name: Gravação de terminal — perfil de login /etc/profile.d/zz-rhcsa-rec.sh
+  ansible.builtin.copy:
+    src: zz-rhcsa-rec.sh
+    dest: /etc/profile.d/zz-rhcsa-rec.sh
+    owner: root
+    group: root
+    mode: "0644"
+  delegate_to: "{{ item }}"
+  loop: "{{ rhcsa_recording_hosts }}"
+  when: rhcsa_recording_enabled | bool
+
+- name: Gravação de terminal desligada — remover perfil e tmpfiles
+  ansible.builtin.file:
+    path: "{{ item.1 }}"
+    state: absent
+  delegate_to: "{{ item.0 }}"
+  loop: "{{ rhcsa_recording_hosts | product(['/etc/profile.d/zz-rhcsa-rec.sh', '/etc/tmpfiles.d/rhcsa-rec.conf']) | list }}"
+  when: not (rhcsa_recording_enabled | bool)
+
+- name: Revisão por IA — exigir RHCSA_AI_REVIEWER quando ligada
+  ansible.builtin.assert:
+    that:
+      - ai_reviewer is match('^[A-Za-z0-9._-]+@[A-Za-z0-9.:_-]+$')
+      - rhcsa_recording_enabled | bool
+    fail_msg: >-
+      ai_review_enabled=true exige AI_REVIEWER=usuario@host no .env e a
+      gravação ligada (RHCSA_RECORDING_ENABLED=true). Ver contrib/ai-reviewer/README.md.
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA — instalar ai_review.py
+  ansible.builtin.copy:
+    src: ai_review.py
+    dest: /opt/rhcsa-lab-dashboard/ai_review.py
+    owner: root
+    group: root
+    mode: "0644"
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA — /etc/rhcsa-ai-review.conf (legível só por root e student)
+  ansible.builtin.template:
+    src: rhcsa-ai-review.conf.j2
+    dest: /etc/rhcsa-ai-review.conf
+    owner: root
+    group: "{{ lab_student_user }}"
+    mode: "0640"
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA — gerar chave dedicada do student
+  ansible.builtin.command:
+    argv: [ssh-keygen, -q, -t, ed25519, -N, "", -C, "{{ lab_student_user }}@workstation-rhcsa-ai-review",
+           -f, "/home/{{ lab_student_user }}/{{ ai_review_key }}"]
+    creates: "/home/{{ lab_student_user }}/{{ ai_review_key }}"
+  become_user: "{{ lab_student_user }}"
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA — ler a chave pública
+  ansible.builtin.slurp:
+    src: "/home/{{ lab_student_user }}/{{ ai_review_key }}.pub"
+  register: ai_review_pubkey
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA — mostrar a linha para o authorized_keys do revisor
+  ansible.builtin.debug:
+    msg: >-
+      No revisor ({{ ai_reviewer }}), adicione a ~/.ssh/authorized_keys:
+      from="<IP de origem da workstation>",command="<HOME>/.local/bin/rhcsa-ai-review",restrict
+      {{ ai_review_pubkey.content | b64decode | trim }}
+  when: ai_review_enabled | bool
+
+- name: Revisão por IA desligada — remover script e configuração
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /opt/rhcsa-lab-dashboard/ai_review.py
+    - /etc/rhcsa-ai-review.conf
+  when: not (ai_review_enabled | bool)

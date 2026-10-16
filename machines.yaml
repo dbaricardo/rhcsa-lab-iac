@@ -1,7 +1,12 @@
 # Especificação central da topologia do lab RHCSA.
-# terraform/main.tf (VMs, rede, discos e inventário do Ansible) e os roles
-# Ansible leem este arquivo — é a única fonte de verdade para hostnames, IPs,
-# specs e discos.
+# terraform/main.tf (VMs, rede, NICs, discos e inventário do Ansible) e os
+# roles Ansible leem este arquivo — é a única fonte de verdade para
+# hostnames, IPs, MACs, specs e discos.
+#
+# Espelha o lab RHCSA do homelab (VMs 130/131/132 do Proxmox, conferidas em
+# 2026-10-16 com `qm config`): 2 vCPU, 2048 MiB, disco do SO SCSI de 20 GiB,
+# servera com 2 NICs, servera/serverb com discos virtio de 2 e 3 GiB e
+# serverb com os discos SCSI "legados" de 6 e 1 GiB.
 
 domain: lab.example.com
 image: rhel10-rhcsa-base
@@ -10,6 +15,11 @@ network:
   libvirt_name: rhcsa_lab
   cidr: 192.168.56.0/24
   gateway: 192.168.56.1
+  # O "DNS" gravado nos perfis do homelab (192.168.10.30) vira o próprio
+  # host libvirt (dnsmasq da rede NAT), que também responde ping.
+  dns:
+    - 192.168.56.1
+    - 8.8.8.8
 
 student:
   username: student
@@ -21,24 +31,69 @@ dashboard:
   # real de quem for acessar o painel (por padrão, só a rede privada do lab).
   allowed_source: 192.168.56.0/24
 
+# "classroom" (mirror :8091, flatpak, NTP) — no homelab é a LXC 205; aqui
+# roda na workstation (role `classroom`).
+classroom:
+  host: workstation
+  port: 8091
+
+# NICs: a 1a é a de gerência (IP fixo por reserva DHCP no 1o boot, depois
+# perfil NM estático "ens18"); as demais ficam na MESMA rede, sem IP.
+# Os nomes ens18/ens19 vêm de arquivos systemd .link que casam o MAC
+# (role `common`) — por isso o MAC é fixo aqui. Os MACs são os mesmos das
+# VMs do homelab; a rede libvirt é um L2 isolado, sem risco de colisão.
+# Sempre em minúsculas: o libvirt devolve minúsculas e qualquer diferença
+# de caixa vira drift no `terraform plan`.
+#
+# extra_disks: a ORDEM importa (é a ordem de anexação, que define sdb/sdc e
+# vda/vdb dentro da VM, igual ao `lsblk` do homelab). Os exercícios acham
+# os discos por TAMANHO, nunca por nome (ver lab-common.sh).
 machines:
   workstation:
     ip: 192.168.56.10
     memory_mb: 2048
     cpus: 2
     role: client
+    nics:
+      - name: ens18
+        mac: "bc:24:11:33:bf:14"
   servera:
     ip: 192.168.56.20
     memory_mb: 2048
     cpus: 2
     role: server
+    nics:
+      - name: ens18
+        mac: "bc:24:11:e8:41:fc"
+      # 2a NIC de prática do examsim-network (perfil examsim-ens19-reset).
+      - name: ens19
+        mac: "bc:24:11:36:e6:5e"
+    extra_disks:
+      - label: vdisk2g
+        size_gb: 2
+        bus: virtio
+      - label: vdisk3g
+        size_gb: 3
+        bus: virtio
   serverb:
     ip: 192.168.56.30
     memory_mb: 2048
     cpus: 2
     role: server
+    nics:
+      - name: ens18
+        mac: "bc:24:11:6b:d7:ad"
     extra_disks:
+      # Legados (storage/LVM/swap do examsim-full): sdb = 6 GiB, sdc = 1 GiB.
       - label: vmdata1
         size_gb: 6
+        bus: scsi
       - label: vmdata2
         size_gb: 1
+        bus: scsi
+      - label: vdisk2g
+        size_gb: 2
+        bus: virtio
+      - label: vdisk3g
+        size_gb: 3
+        bus: virtio

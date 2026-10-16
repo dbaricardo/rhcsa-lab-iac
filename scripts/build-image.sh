@@ -83,10 +83,18 @@ echo "==> Instalação desassistida via virt-install (isso demora alguns minutos
 # que o seabios do RHEL/Rocky 10 não instala ("Unable to find 'bios'
 # firmware", visto em produção) -- sem <os firmware=...> o libvirt usa o
 # SeaBIOS embutido do QEMU em qualquer distro.
+#
+# Disco em SCSI (virtio-scsi), o MESMO barramento do disco do SO nas VMs
+# (Terraform: disk { scsi = true } -> /dev/sda, igual ao homelab): o
+# initramfs hostonly que a Anaconda gera já nasce com virtio_scsi/sd_mod.
+# O kickstart não cita nome de disco (sem ignoredisk/--ondisk) e ainda
+# força os drivers SCSI e virtio-blk via dracut.conf.d, então trocar o bus
+# aqui de volta para virtio não quebraria o boot das VMs.
 virt-install \
   --name "$DOMAIN_NAME" \
   --memory 2048 --vcpus 2 \
-  --disk "path=$DISK,format=qcow2,bus=virtio" \
+  --controller type=scsi,model=virtio-scsi \
+  --disk "path=$DISK,format=qcow2,bus=scsi" \
   --location "$RHEL_ISO_PATH" \
   --initrd-inject "$KS_RENDERED" \
   --extra-args "inst.ks=file:/$(basename "$KS_RENDERED") console=ttyS0,115200n8 inst.text" \

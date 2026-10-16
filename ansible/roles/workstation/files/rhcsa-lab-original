@@ -1,0 +1,181 @@
+#!/bin/bash
+# lab — dispatcher do classroom rodando na workstation.
+#
+# No classroom oficial o aluno nunca loga nas VMs-alvo para preparar um
+# laboratório: ele roda "lab start <nome>" em student@workstation e a
+# ferramenta atua remotamente. Este dispatcher reproduz isso — ele não
+# executa nada localmente, apenas delega por SSH ao "lab" já instalado
+# no host-alvo, que roda os scripts validados em
+# /usr/local/lib/lab-scripts/ e /usr/local/lib/lab-finish/.
+#
+# Manter os scripts nos alvos (em vez de centralizá-los aqui) é
+# deliberado: eles já foram validados host a host e alguns dependem de
+# discos e de estado local que só existem lá.
+#
+# Uso: lab start  <nome-do-lab>
+#      lab grade  <nome-do-lab>
+#      lab finish <nome-do-lab>
+#      lab list
+#
+# Labs "examsim-*" (simulado YouTube kBsMuA-DA9E, node1=servera/node2=serverb)
+# adicionam o subcomando "grade" — avaliação isolada e não destrutiva.
+#
+# examsim-autofs-remoteuser2 usa a propria workstation como alvo (servidor
+# NFS) -- por isso ela tambem tem seus proprios START_DIR/GRADE_DIR/FINISH_DIR
+# locais, no mesmo padrao dos hosts servera/serverb.
+
+set -u
+START_DIR=/usr/local/lib/lab-scripts
+GRADE_DIR=/usr/local/lib/lab-grade
+FINISH_DIR=/usr/local/lib/lab-finish
+
+# Ordem importa nos labs multi-host: no "start" o servidor NFS vem antes
+# do cliente; no "finish" o cliente é limpo antes (senão o umount/export
+# fica preso). Cada entrada é a lista de alvos já na ordem de execução.
+lab_hosts() {
+    local sub=$1 nome=$2
+    case "$nome" in
+        # --- examsim: só servera (node1 do simulado) ---
+        examsim-grupos|examsim-dir-colaborativo|examsim-cron|\
+        examsim-backup|examsim-user-barry|examsim-selinux-httpd|\
+        examsim-find-simone|examsim-find-strato|examsim-script-suid-umask|\
+        examsim-network|examsim-ntp|examsim-repo-node1|examsim-timer-acl|\
+        examsim-flatpak|examsim-script-args|examsim-tuned-servera)
+            echo "servera" ;;
+        # --- examsim: só serverb (node2 do simulado) ---
+        examsim-tuned|examsim-swap|examsim-lvm-mydatabase|examsim-lvm-resize-home|\
+        examsim-repo-node2|examsim-rootpw-recover-node2|examsim-vgextend|\
+        examsim-treino-storage)
+            echo "serverb" ;;
+        # --- prova completa: orquestrada por /usr/local/lib/lab-full/examsim-full.sh ---
+        examsim-full|examsim-dinamico)
+            echo "servera serverb workstation" ;;
+        # --- multi-host: workstation exporta /ourhome/remoteuser2, servera monta via autofs ---
+        examsim-autofs-remoteuser2)
+            [ "$sub" = start ] && echo "workstation servera" || echo "servera workstation" ;;
+        *)
+            echo "" ;;
+    esac
+}
+
+# Labs cujo efeito só aparece (ou só é reversível) pelo console da VM
+# (virsh console rhcsa-lab-<vm> ou virt-viewer, no host libvirt).
+lab_aviso() {
+    case "$1" in
+        examsim-rootpw-recover-node2)
+            echo "AVISO: este lab exige recuperacao pelo console (virsh console rhcsa-lab-serverb, rd.break), nao por SSH." ;;
+        examsim-vgextend)
+            echo "AVISO: este lab zera o disco de pratica de 6 GiB do serverb." ;;
+        examsim-treino-storage)
+            echo "AVISO: treino cronometrado (meta 10 min). Zera o disco de pratica de 6 GiB do serverb -- nao rode durante o examsim-full." ;;
+    esac
+}
+
+TODOS_OS_LABS="examsim-grupos examsim-dir-colaborativo examsim-cron examsim-backup examsim-user-barry
+examsim-selinux-httpd examsim-find-simone examsim-find-strato examsim-script-suid-umask
+examsim-network examsim-ntp examsim-repo-node1 examsim-timer-acl examsim-autofs-remoteuser2
+examsim-tuned examsim-swap examsim-lvm-mydatabase examsim-lvm-resize-home
+examsim-repo-node2 examsim-rootpw-recover-node2
+examsim-flatpak examsim-script-args examsim-tuned-servera examsim-vgextend
+examsim-treino-storage
+examsim-full examsim-dinamico"
+
+listar() {
+    echo "Laboratorios disponiveis (host-alvo entre parenteses):"
+    for l in $TODOS_OS_LABS; do
+        printf '  %-22s (%s)\n' "$l" "$(lab_hosts start "$l" | tr ' ' ',')"
+    done
+}
+
+usage() {
+    echo "Uso: lab start  <nome-do-lab>"
+    echo "     lab grade  <nome-do-lab>"
+    echo "     lab finish <nome-do-lab>"
+    echo "     lab list"
+    echo
+    listar
+    exit 1
+}
+
+[ $# -ge 1 ] || usage
+SUBCOMMAND=$1
+shift
+
+case "$SUBCOMMAND" in
+    list) listar; exit 0 ;;
+    start|grade|finish) ;;
+    *) usage ;;
+esac
+
+[ $# -eq 1 ] || usage
+NOME=$1
+HOSTS=$(lab_hosts "$SUBCOMMAND" "$NOME")
+
+if [ -z "$HOSTS" ]; then
+    echo "ERRO: lab '$NOME' nao existe." >&2
+    echo >&2
+    listar >&2
+    exit 1
+fi
+
+# A prova completa nao e' um lab por host: o orquestrador define a ordem dos
+# 24 starts/graders/finishes entre os 3 hosts e a correcao unica no finish.
+if [ "$NOME" = examsim-full ]; then
+    exec bash /usr/local/lib/lab-full/examsim-full.sh "$SUBCOMMAND"
+fi
+
+# O exame dinamico tambem e' orquestrado: sorteia as questoes (dyn.py), prepara os
+# hosts e corrige tudo no finish. Fica em /usr/local/lib/lab-dyn/.
+if [ "$NOME" = examsim-dinamico ]; then
+    exec bash /usr/local/lib/lab-dyn/examsim-dinamico.sh "$SUBCOMMAND"
+fi
+
+AVISO=$(lab_aviso "$NOME")
+[ -n "$AVISO" ] && echo "$AVISO"
+
+SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new"
+RC_FINAL=0
+
+# examsim-autofs-remoteuser2 precisa da propria workstation como alvo (ela e
+# quem exporta o NFS). Esta e a UNICA excecao: os scripts dela ficam locais
+# (mesmos diretorios START_DIR/GRADE_DIR/FINISH_DIR ja definidos acima).
+# Roda via "ssh root@localhost" (chave de student autorizada em
+# /root/.ssh/authorized_keys da propria workstation) em vez de sudo direto,
+# pro mesmo padrao de confianca-por-chave usado nos outros hosts -- e pra
+# nao reentrar neste mesmo dispatcher (que aqui e o meta, nao o executor).
+for HOST in $HOSTS; do
+    if [ "$HOST" = "workstation" ]; then
+        case "$SUBCOMMAND" in
+            start)  SCRIPT="$START_DIR/$NOME.sh" ;;
+            grade)  SCRIPT="$GRADE_DIR/$NOME.sh" ;;
+            finish) SCRIPT="$FINISH_DIR/$NOME.sh" ;;
+        esac
+        if [ ! -f "$SCRIPT" ]; then
+            echo "ERRO: '$NOME' nao tem $SUBCOMMAND local na workstation ($SCRIPT)." >&2
+            exit 2
+        fi
+        echo "==> $SUBCOMMAND $NOME localmente na workstation"
+        ssh $SSH_OPTS "root@localhost" "bash $SCRIPT"
+        RC=$?
+    else
+        # Falhar aqui em vez de rodar local: o defeito que este dispatcher
+        # substitui era justamente criar o estado na maquina errada.
+        if ! ssh $SSH_OPTS "root@$HOST" true 2>/dev/null; then
+            echo "ERRO: nao consegui alcancar root@$HOST por SSH." >&2
+            echo "      Verifique se a VM esta ligada e com IP, e se a chave de student esta instalada." >&2
+            exit 2
+        fi
+        echo "==> $SUBCOMMAND $NOME em $HOST"
+        ssh $SSH_OPTS "root@$HOST" "lab $SUBCOMMAND $NOME"
+        RC=$?
+    fi
+    if [ $RC -ne 0 ]; then
+        echo "ERRO: 'lab $SUBCOMMAND $NOME' falhou em $HOST (codigo $RC)." >&2
+        RC_FINAL=$RC
+        # Nos multi-host, seguir para o proximo alvo deixaria o ambiente
+        # meio-montado e mais confuso de depurar do que parar aqui.
+        break
+    fi
+done
+
+exit $RC_FINAL

@@ -15,3 +15,26 @@ lab_offline_repo_url: ""
 # registra automaticamente (ver tasks/main.yml).
 lab_rhsm_org_id: "{{ lookup('ansible.builtin.env', 'RHSM_ORG_ID') }}"
 lab_rhsm_activation_key: "{{ lookup('ansible.builtin.env', 'RHSM_ACTIVATION_KEY') }}"
+
+# Hosts que têm o remote flatpak "flathub" de sistema no homelab (serverb
+# não tem nem o pacote flatpak).
+common_flathub_hosts: [servera, workstation]
+
+# Pacotes que os exercícios (examsim-*, examsim-full, dyn-*) pressupõem
+# instalados -- conferidos com `rpm -q` no fim de tasks/packages.yml.
+common_required_packages_base:
+  - acl
+  - autofs
+  - chrony
+  - dosfstools
+  - lvm2
+  - nfs-utils
+  - parted
+  - policycoreutils-python-utils
+  - tuned
+  - xfsprogs
+  - python3
+common_required_packages:
+  servera: "{{ common_required_packages_base + ['httpd', 'flatpak'] }}"
+  serverb: "{{ common_required_packages_base + ['httpd'] }}"
+  workstation: "{{ common_required_packages_base + ['flatpak', 'createrepo_c', 'rpm-build', 'ostree'] }}"

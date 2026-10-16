@@ -1,0 +1,96 @@
+---
+# "Classroom" do homelab (LXC 205, job Nomad rhcsa-lab-repo + rhcsa-ntp)
+# reproduzido na workstation: nginx :8091 com os mesmos vhosts e caminhos,
+# mirror parcial BaseOS/AppStream, /timer-repo com o stub logger, OSTree
+# "myrepo" e NTP.
+
+classroom_webroot: /usr/share/nginx/html
+
+# URL HTTP da DVD ISO (scripts/offline-repo.sh no host; o Makefile passa
+# -e lab_iso_url=...). Vazia = pula o mirror de pacotes, com aviso.
+classroom_iso_url: "{{ lab_iso_url | default('', true) }}"
+
+# Mesmos NOMES de pacote do mirror do homelab (ls de
+# /mnt/rhcsa-lab-repo/rhel10.0/x86_64/dvd/{BaseOS,AppStream} em 2026-10-16),
+# no mesmo diretório em que estão lá. Os RPMs vêm da ISO do usuário.
+classroom_mirror_baseos:
+  - acl
+  - at
+  - autofs
+  - bind-libs
+  - bind-license
+  - bind-utils
+  - chrony
+  - cronie
+  - cronie-anacron
+  - libacl
+  - lm_sensors-libs
+  - nfs-utils
+  - pcp-conf
+  - pcp-libs
+  - policycoreutils
+  - policycoreutils-python-utils
+  - python3-policycoreutils
+  - rsync
+  - setroubleshoot-server
+  - sysstat
+  - tcpdump
+  - unzip
+  - wget
+  - words
+classroom_mirror_appstream:
+  - git
+  - git-core
+  - git-core-doc
+  - httpd
+  - mariadb
+  - mariadb-client-utils
+  - mariadb-common
+  - mariadb-connector-c
+  - mariadb-connector-c-config
+  - nano
+  - nmap-ncat
+  - perl-DBI
+  - perl-Error
+  - perl-Git
+  - perl-lib
+  - perl-Math-BigInt
+  - perl-Math-Complex
+  - perl-Sys-Hostname
+  - perl-TermReadKey
+  - tree
+  - tuned
+  - vim-common
+  - vim-data
+  - vim-enhanced
+  - vim-minimal
+  - vsftpd
+
+# OSTree "myrepo" (flatpak.lab.example.com). Apps do livro + runtimes que o
+# mirror do homelab tem; os runtimes exigidos pelos apps no momento do pull
+# (metadata runtime=/sdk=) são acrescentados automaticamente.
+classroom_flatpak_repo: "{{ classroom_webroot }}/flatpak/myrepo"
+classroom_flatpak_upstream: https://dl.flathub.org/repo/
+classroom_flatpak_apps:
+  - app/com.vscodium.codium/x86_64/stable
+  - app/md.obsidian.Obsidian/x86_64/stable
+classroom_flatpak_runtimes:
+  - runtime/org.freedesktop.Platform/x86_64/24.08
+  - runtime/org.freedesktop.Platform/x86_64/25.08
+  - runtime/org.freedesktop.Sdk/x86_64/24.08
+  - runtime/org.freedesktop.Sdk/x86_64/25.08
+# Teto do pull do Flathub (~1,6 GB).
+classroom_flatpak_timeout: 7200
+
+# Pacotes do classroom. nginx é o ÚNICO que a workstation do homelab não
+# tem (lá o servidor web é a LXC 205); os demais já estão na lista de
+# paridade da workstation.
+classroom_packages:
+  - nginx
+  - createrepo_c
+  - rpm-build
+  - ostree
+  - flatpak
+  - dnf-plugins-core
+  - policycoreutils-python-utils
+  - chrony

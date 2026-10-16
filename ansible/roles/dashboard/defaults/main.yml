@@ -1,0 +1,12 @@
+---
+# Valores de fallback. As variáveis compartilhadas (lab_hosts_ip,
+# dashboard_port, lab_student_user...) são definidas em group_vars/all.yml.
+dashboard_port: 8421
+# Bind igual ao homelab: só no IP da workstation (no homelab, 192.168.10.137).
+dashboard_bind_host: "{{ (lab_hosts_ip | default({})).workstation | default('192.168.56.10') }}"
+dashboard_allowed_source: "{{ lab_network_cidr | default('192.168.56.0/24') }}"
+# Senha de root do lab, só para o painel ocultar a credencial nas saídas
+# (RHCSA_LAB_ROOT_PASSWORD em /etc/rhcsa-lab-dashboard.env, 0600). Vem do
+# .env (LAB_ROOT_PASSWORD) e nunca fica no repositório. Vazia = só oculta a
+# senha de exercício 'atenorth', que já está no código.
+dashboard_root_password: "{{ lookup('ansible.builtin.env', 'LAB_ROOT_PASSWORD') }}"

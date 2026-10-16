@@ -1,0 +1,7 @@
+[Flatpak Repo]
+Title=My Flatpak Repository
+Url=http://flatpak.lab.example.com:8091/
+Homepage=http://flatpak.lab.example.com
+Comment=Custom Flatpak repository
+Description=Repository for custom Flatpak applications
+NoDeps=true

@@ -1,0 +1,16 @@
+---
+# Nomes gravados no known_hosts da workstation (student e root), cada um com
+# a chave de host real da VM correspondente.
+ssh_crosshost_known_names: >-
+  {{ [
+       {'name': 'servera', 'host': 'servera'},
+       {'name': 'servera.' ~ lab_domain, 'host': 'servera'},
+       {'name': lab_hosts_ip.servera, 'host': 'servera'},
+       {'name': 'serverb', 'host': 'serverb'},
+       {'name': 'serverb.' ~ lab_domain, 'host': 'serverb'},
+       {'name': lab_hosts_ip.serverb, 'host': 'serverb'},
+       {'name': 'workstation', 'host': 'workstation'},
+       {'name': 'workstation.' ~ lab_domain, 'host': 'workstation'},
+       {'name': lab_hosts_ip.workstation, 'host': 'workstation'},
+       {'name': 'localhost', 'host': 'workstation'},
+     ] }}

@@ -1,6 +1,6 @@
 # Topologia do lab RHCSA (3 VMs + rede privada) sobre libvirt/KVM.
-# machines.yaml é a única fonte de verdade: hostnames, IPs, specs e discos
-# extra vêm de lá; este arquivo só traduz aquilo para recursos libvirt.
+# machines.yaml é a única fonte de verdade: hostnames, IPs, MACs, specs e
+# discos extra vêm de lá; este arquivo só traduz aquilo para recursos libvirt.
 
 locals {
   spec     = yamldecode(file("${path.module}/../machines.yaml"))
@@ -9,7 +9,10 @@ locals {
   base_image = abspath("${path.module}/../output/${local.spec.image}.qcow2")
   ssh_key    = abspath("${path.module}/../output/student_key")
 
-  # Discos extra achatados num mapa "<host>-<label>" => spec, para for_each.
+  # Discos extra achatados num mapa "<host>-<label>" => spec, para for_each
+  # dos volumes. A ORDEM de anexação não sai daqui (mapa = ordem alfabética
+  # das chaves): o bloco dynamic "disk" do domínio percorre a LISTA de
+  # machines.yaml, que é o que define sdb/sdc e vda/vdb dentro da VM.
   extra_disks = {
     for d in flatten([
       for host, m in local.machines : [
@@ -21,12 +24,15 @@ locals {
       ]
     ]) : d.key => d
   }
+
+  hosts_ip = { for name, m in local.machines : name => m.ip }
 }
 
-# Rede NAT: dá saída para a internet (subscription, repositórios da Red Hat)
-# e IP fixo por VM via reserva DHCP do dnsmasq do libvirt -- a imagem golden
-# vem com 'network --bootproto=dhcp', então nada precisa ser configurado
-# dentro da VM para o IP de machines.yaml valer.
+# Rede NAT: dá saída para a internet (subscription, Flathub para o mirror
+# flatpak do classroom) e IP fixo por VM via reserva DHCP do dnsmasq do
+# libvirt (casada pelo MAC fixo de machines.yaml) -- é com esse IP que o
+# Ansible entra no 1o boot. Depois o role `common` grava um perfil NM
+# estático "ens18" com o MESMO IP (igual ao homelab), sem trocar o endereço.
 resource "libvirt_network" "lab" {
   name      = local.spec.network.libvirt_name
   mode      = "nat"
@@ -85,24 +91,39 @@ resource "libvirt_domain" "vm" {
     mode = "host-passthrough"
   }
 
-  network_interface {
-    network_id = libvirt_network.lab.id
-    hostname   = each.key
-    addresses  = [each.value.ip]
+  # 1a NIC = gerência (ens18): reserva DHCP hostname/IP pelo MAC fixo.
+  # Demais NICs (servera: ens19) na MESMA rede, sem reserva nem IP -- igual
+  # ao homelab, onde a 2a NIC está na mesma LAN do gateway.
+  dynamic "network_interface" {
+    for_each = each.value.nics
+    content {
+      network_id = libvirt_network.lab.id
+      mac        = lower(network_interface.value.mac)
+      hostname   = network_interface.key == 0 ? each.key : null
+      addresses  = network_interface.key == 0 ? [each.value.ip] : null
+    }
   }
 
+  # Disco do SO em SCSI (virtio-scsi; o provider cria o controlador quando
+  # há disco com scsi = true) -> /dev/sda dentro da VM, igual ao homelab
+  # (scsi0 + scsihw virtio-scsi-pci no Proxmox). A imagem golden também é
+  # instalada num disco SCSI (scripts/build-image.sh), então o initramfs
+  # hostonly já traz virtio_scsi/sd_mod -- ver kickstart/ks.cfg.tpl.
   disk {
     volume_id = libvirt_volume.root[each.key].id
+    scsi      = true
   }
 
-  # O tamanho é a única forma confiável de identificar um disco extra depois
-  # (a ordem vdb/vdc já inverteu entre boots em produção real) -- por isso
-  # os roles Ansible resolvem discos por tamanho via lab-common.sh, nunca
-  # pelo nome do dispositivo.
+  # Discos extra na ordem da LISTA de machines.yaml: SCSI viram sdb, sdc...
+  # (unidades seguintes do mesmo controlador) e virtio viram vda, vdb... --
+  # mesmos nomes do `lsblk` do homelab. Mesmo assim, os roles e os
+  # exercícios resolvem discos por TAMANHO, nunca pelo nome (a ordem já
+  # inverteu entre boots em produção real).
   dynamic "disk" {
-    for_each = [for k, d in local.extra_disks : k if d.host == each.key]
+    for_each = try(each.value.extra_disks, [])
     content {
-      volume_id = libvirt_volume.extra[disk.value].id
+      volume_id = libvirt_volume.extra["${each.key}-${disk.value.label}"].id
+      scsi      = try(disk.value.bus, "virtio") == "scsi" ? true : null
     }
   }
 
@@ -124,7 +145,8 @@ resource "libvirt_domain" "vm" {
 }
 
 # Inventário do Ansible gerado a partir do mesmo machines.yaml, com as
-# variáveis que os roles esperam .
+# variáveis que os roles esperam (group_vars/all.yml tem os mesmos valores
+# como fallback para quem rodar o playbook com outro inventário).
 resource "local_file" "inventory" {
   filename        = abspath("${path.module}/../output/inventory.yml")
   file_permission = "0644"
@@ -136,6 +158,11 @@ resource "local_file" "inventory" {
         lab_domain                   = local.spec.domain
         lab_student_user             = local.spec.student.username
         lab_network_cidr             = local.spec.network.cidr
+        lab_gateway_ip               = local.spec.network.gateway
+        lab_hosts_ip                 = local.hosts_ip
+        classroom_host               = local.spec.classroom.host
+        classroom_ip                 = local.machines[local.spec.classroom.host].ip
+        classroom_port               = local.spec.classroom.port
         dashboard_host               = local.spec.dashboard.host
         dashboard_port               = local.spec.dashboard.port
         dashboard_allowed_source     = local.spec.dashboard.allowed_source

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: rhcsa-lab-iac
+  description: Exame dinâmico RHCSA (examsim-dinamico) na workstation
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

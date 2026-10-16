@@ -1,0 +1,115 @@
+---
+# Instala o motor do exame dinâmico em /usr/local/lib/lab-dyn/ com os MESMOS donos e modos
+# da workstation do homelab (conferidos em 2026-10-16 por stat/tar da VM 132):
+#   diretórios lab-dyn/, tasks/, qa/ ........ student:student 0775
+#   dyn.py ................................... student:student 0755
+#   pool.json, EXCLUDED.md, tasks/*.sh ....... student:student 0644
+#   qa/*.sh .................................. student:student 0755
+#   examsim-dinamico.sh, qa/validate-alt.sh .. root:root 0755
+#   qa/alts-d4d7.sh .......................... root:root 0644 (só é "source"-ado)
+# As tarefas portadas NÃO são instaladas em servera/serverb: o orquestrador as envia por SSH
+# (base64 em "bash -c"). O dispatcher /usr/local/libexec/rhcsa-lab-original (role workstation)
+# faz "exec bash /usr/local/lib/lab-dyn/examsim-dinamico.sh <fase>".
+
+- name: lab_dyn - diretórios do motor
+  ansible.builtin.file:
+    path: "{{ lab_dyn_dest }}/{{ item }}"
+    state: directory
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0775"
+  loop: ["", tasks, qa]
+
+- name: lab_dyn - dyn.py, pool.json e EXCLUDED.md
+  ansible.builtin.copy:
+    src: "{{ lab_dyn_src }}/{{ item.name }}"
+    dest: "{{ lab_dyn_dest }}/{{ item.name }}"
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { name: dyn.py, mode: "0755" }
+    - { name: pool.json, mode: "0644" }
+    - { name: EXCLUDED.md, mode: "0644" }
+
+- name: lab_dyn - orquestrador examsim-dinamico.sh
+  ansible.builtin.copy:
+    src: "{{ lab_dyn_src }}/examsim-dinamico.sh"
+    dest: "{{ lab_dyn_dest }}/examsim-dinamico.sh"
+    owner: "{{ lab_dyn_root_user }}"
+    group: "{{ lab_dyn_root_user }}"
+    mode: "0755"
+
+# Cópia por diretório (uma task): são 143 arquivos com o mesmo dono e modo.
+- name: lab_dyn - tarefas portadas (_lib.sh + dyn-*.sh), 0644
+  ansible.builtin.copy:
+    src: "{{ lab_dyn_src }}/tasks/"
+    dest: "{{ lab_dyn_dest }}/tasks/"
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0644"
+    directory_mode: "0775"
+
+# QA: 11 arquivos, um a um (donos/modos diferentes; copiar o diretório e corrigir depois
+# não seria idempotente).
+- name: lab_dyn - ferramentas de QA (qa/*.sh)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ lab_dyn_dest }}/qa/{{ item | basename }}"
+    owner: "{{ ((item | basename) in lab_dyn_qa_root_files) | ternary(lab_dyn_root_user, lab_student_user) }}"
+    group: "{{ ((item | basename) in lab_dyn_qa_root_files) | ternary(lab_dyn_root_user, lab_student_user) }}"
+    mode: "{{ ((item | basename) == 'alts-d4d7.sh') | ternary('0644', '0755') }}"
+  loop: "{{ query('ansible.builtin.fileglob', lab_dyn_src + '/qa/*.sh') | sort }}"
+  loop_control:
+    label: "{{ item | basename }}"
+
+# Manifestos públicos lidos pelo painel (backend.py -> dynamic_exam em /api/state).
+# O diretório pai (0700 student) é do role dashboard; aqui só garantimos que exista.
+- name: lab_dyn - diretório de dados do painel (pai)
+  ansible.builtin.file:
+    path: "{{ lab_dyn_data_dir }}"
+    state: directory
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0700"
+
+- name: lab_dyn - dinamico/ e dinamico/history/ (homelab - student 0755)
+  ansible.builtin.file:
+    path: "{{ lab_dyn_data_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0755"
+  loop: [dinamico, dinamico/history]
+
+- name: lab_dyn - servidor NFS para os exports /exports/dyn-* (nfs-utils)
+  ansible.builtin.dnf:
+    name: nfs-utils
+    state: present
+  when: lab_dyn_manage_nfs | bool
+
+# O _lib.sh liga o nfs-server sob demanda e o devolve ao estado original; só o firewall
+# precisa estar aberto, como na workstation do homelab (zona public: nfs mountd rpc-bind).
+- name: lab_dyn - firewalld libera NFS para servera/serverb
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    zone: public
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ lab_dyn_firewalld_services }}"
+  when: lab_dyn_manage_nfs | bool
+
+- name: lab_dyn - python3 disponível para dyn.py
+  ansible.builtin.command: python3 -c "import json, random, shlex"
+  changed_when: false
+
+- name: lab_dyn - o pool instalado carrega (166 tarefas) e sorteia uma prova de 24
+  ansible.builtin.command:
+    cmd: >-
+      python3 -c "import sys; sys.path.insert(0, '{{ lab_dyn_dest }}'); import dyn;
+      p = dyn.load_pool('{{ lab_dyn_dest }}/pool.json'); m = dyn.draw(p, seed=1);
+      assert len(p['tasks']) == 166 and len(m['questions']) == 24 and m['pass_mark'] == 17; print('ok')"
+  environment:
+    PYTHONDONTWRITEBYTECODE: "1"
+  changed_when: false

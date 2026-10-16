@@ -7,7 +7,7 @@
 # dashboard). Código de saída 2 == falha real de conectividade/infra,
 # refletindo o mesmo contrato do dispatcher `lab` (ver docs/explanation/arquitetura.md).
 #
-# Seguro de rodar múltiplas vezes: users-groups-01/start.sh é idempotente
+# Seguro de rodar múltiplas vezes: o start do examsim-grupos é idempotente
 # (contrato de docs/reference/contrato-exercicios.md) e finish.sh sempre roda no
 # final, deixando o exercício limpo.
 set -uo pipefail
@@ -15,7 +15,7 @@ set -uo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR" || exit 1
 
-EXAMPLE_LAB="users-groups-01"
+EXAMPLE_LAB="examsim-grupos"
 FAILURES=0
 
 # Diretório temporário isolado por execução -- evita colidir com uma outra

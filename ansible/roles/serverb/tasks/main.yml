@@ -1,13 +1,18 @@
 ---
-- name: Instalar pacotes de servidor comuns aos exercícios
-  ansible.builtin.dnf:
-    name:
-      - firewalld
-      - policycoreutils-python-utils
-      - setroubleshoot-server
-      - nfs-utils
-      - autofs
-    state: present
+# serverb: o que o homelab tem além de common + lab_common. Pacotes já
+# vieram pela paridade do common (files/homelab-rpms/serverb.txt: httpd,
+# autofs, nfs-utils, sysstat... e SEM flatpak).
 
-- name: Confirmar discos extra de storage/LVM
-  ansible.builtin.include_tasks: extra-disks.yml
+- name: Firewall igual ao homelab (zona public)
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    zone: public
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ serverb_firewalld_services }}"
+
+- name: Confirmar discos extra (SCSI 6 e 1 GiB, virtio 2 e 3 GiB)
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: extra-disks

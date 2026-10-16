@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """Local-only RHCSA progress parsing, persistence and read-only HTTP API."""
+import os
 import re
 import json
 import sqlite3
@@ -117,6 +118,81 @@ def parse_grade(output, returncode, hosts):
             'output': output}
 
 
+DYNAMIC_MAX_BYTES = 262144
+# Credenciais de exercício nunca saem pelo painel, mesmo que o manifesto as traga.
+# A senha de root do lab vem do ambiente (RHCSA_LAB_ROOT_PASSWORD, ver o .service), nunca do codigo.
+DYNAMIC_SECRETS = ('atenorth',)
+
+
+def _dyn_secrets():
+    extra = os.environ.get('RHCSA_LAB_ROOT_PASSWORD', '')
+    return DYNAMIC_SECRETS + ((extra,) if extra else ())
+
+
+def _dyn_text(value, limit):
+    if not isinstance(value, str):
+        raise ValueError('text expected')
+    for secret in _dyn_secrets():
+        value = value.replace(secret, '[REDACTED]')
+    return value[:limit]
+
+
+def _dyn_int(value):
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < 10**9:
+        raise ValueError('integer expected')
+    return value
+
+
+def clean_dynamic_exam(raw):
+    """Whitelist and bound the public manifest written by examsim-dinamico (dyn.py).
+
+    Returns None for anything malformed: the dynamic panel is optional and must
+    never break the rest of the dashboard.
+    """
+    try:
+        if not isinstance(raw, dict) or raw.get('state') not in ('open', 'closed'):
+            return None
+        out = {'id': _dyn_text(raw['id'], 64), 'state': raw['state'], 'seed': _dyn_int(raw['seed']),
+               'started_at': _dyn_text(raw['started_at'], 40), 'count': _dyn_int(raw['count']),
+               'minimum': _dyn_int(raw['minimum']), 'pass_mark': _dyn_int(raw['pass_mark'])}
+        domains = raw['domains']
+        questions = raw['questions']
+        if not isinstance(domains, list) or len(domains) > 16 or not isinstance(questions, list) \
+                or len(questions) > 100:
+            return None
+        out['domains'] = [{'n': _dyn_int(d['n']), 'name': _dyn_text(d['name'], 80),
+                           'quota': _dyn_int(d['quota'])} for d in domains]
+        cleaned = []
+        for q in questions:
+            item = {'q': _dyn_int(q['q']), 'id': _dyn_text(q['id'], 64), 'kind': _dyn_text(q['kind'], 12),
+                    'title': _dyn_text(q['title'], 160), 'domain': _dyn_int(q['domain']),
+                    'domain_name': _dyn_text(q['domain_name'], 80), 'category': _dyn_text(q['category'], 40),
+                    'host': _dyn_text(q['host'], 24), 'console': bool(q.get('console')),
+                    'statement': _dyn_text(q['statement'], 4000)}
+            if isinstance(q.get('ok'), bool):
+                item['ok'] = q['ok']
+                item['pending'] = _dyn_text(q.get('pending', ''), 300)
+            cleaned.append(item)
+        out['questions'] = cleaned
+        if raw.get('finished_at') is not None:
+            out['finished_at'] = _dyn_text(raw['finished_at'], 40)
+        score = raw.get('score')
+        if isinstance(score, dict):
+            out['score'] = {'passed': _dyn_int(score['passed']), 'total': _dyn_int(score['total']),
+                            'pass_mark': _dyn_int(score['pass_mark']), 'percent': _dyn_int(score['percent']),
+                            'approved': bool(score['approved'])}
+        by_domain = raw.get('by_domain')
+        if isinstance(by_domain, dict):
+            out['by_domain'] = {str(_dyn_int(int(k))): {'passed': _dyn_int(v['passed']), 'total': _dyn_int(v['total'])}
+                                for k, v in by_domain.items()}
+        return out
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+
+
+REVIEW_STATES = ('running', 'done', 'error')
+
+
 class ProgressStore:
     """Append-only event log; every connection has a bounded busy timeout."""
 
@@ -125,6 +201,7 @@ class ProgressStore:
         self.tasks = {task['id']: task for task in self.catalog}
         Path(data_dir).mkdir(parents=True, exist_ok=True)
         self.path = Path(data_dir) / 'progress.sqlite3'
+        self.dynamic_dir = Path(data_dir) / 'dinamico'
         with closing(self.connect()) as conn:
             conn.execute('PRAGMA journal_mode=WAL')
             conn.execute('''CREATE TABLE IF NOT EXISTS events (
@@ -152,10 +229,57 @@ class ProgressStore:
                          (task_id, action, started_ns if started_ns is not None else time.time_ns(),
                           at, returncode, json.dumps(result, ensure_ascii=False)))
 
+    def record_review(self, task_id, review, *, started_ns):
+        """Store the AI review lifecycle (running/done/error) outside the lab history."""
+        if task_id not in self.tasks or review.get('state') not in REVIEW_STATES:
+            raise ValueError('Unsupported review')
+        at = datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z')
+        with closing(self.connect()) as conn, conn:
+            conn.execute('BEGIN IMMEDIATE')
+            conn.execute('INSERT INTO events(task_id,action,started_ns,at,returncode,result) VALUES(?,?,?,?,?,?)',
+                         (task_id, 'review', started_ns, at, 0, json.dumps(review, ensure_ascii=False)))
+
+    def attempt(self, task_id, *, until_ns):
+        """Latest successful start up to until_ns plus the grade/finish events after it."""
+        with closing(self.connect()) as conn:
+            events = conn.execute("SELECT * FROM events WHERE task_id=? AND started_ns<=? AND action!='review' "
+                                  'ORDER BY started_ns,id', (task_id, until_ns)).fetchall()
+        attempt = None
+        for event in events:
+            if event['action'] == 'start' and event['returncode'] == 0:
+                attempt = dict(started_ns=event['started_ns'], started_at=event['at'], events=[])
+            elif attempt is not None and event['action'] in ('grade', 'finish'):
+                result = json.loads(event['result'])
+                attempt['events'].append(dict(action=event['action'], at=event['at'],
+                                              returncode=event['returncode'],
+                                              status=result.get('status'),
+                                              output=result.get('output', '')))
+        return attempt
+
+    def dynamic_exam(self):
+        """Open exam (current.json) or the latest closed one (history/*.json); None if absent."""
+        candidates = [self.dynamic_dir / 'current.json']
+        history = self.dynamic_dir / 'history'
+        try:
+            candidates += sorted(history.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:1]
+        except OSError:
+            pass
+        for path in candidates:
+            try:
+                if not path.is_file() or path.stat().st_size > DYNAMIC_MAX_BYTES:
+                    continue
+                exam = clean_dynamic_exam(json.loads(path.read_text(encoding='utf-8')))
+            except (OSError, ValueError):
+                continue
+            if exam is not None:
+                return exam
+        return None
+
     def state(self):
         tasks = {task['id']: dict(task, status='pending', passed_criteria=0, total_criteria=0,
                                  last_grade_at=None, last_action=None, attempts=0,
-                                 criteria=[], failure_reasons=[], output='', history=[]) for task in self.catalog}
+                                 criteria=[], failure_reasons=[], output='', history=[],
+                                 review=None) for task in self.catalog}
         updated_at = None
         with closing(self.connect()) as conn:
             events = conn.execute('SELECT * FROM events ORDER BY started_ns,id').fetchall()
@@ -164,6 +288,10 @@ class ProgressStore:
                 continue
             task = tasks[event['task_id']]
             result = json.loads(event['result'])
+            if event['action'] == 'review':
+                task['review'] = dict(result, at=event['at'])
+                updated_at = max(updated_at or '', event['at'])
+                continue
             # Existing SQLite records predate failure_reasons; rebuild safely from criteria.
             result.setdefault('failure_reasons', [
                 (criterion.get('text') or 'Critério não atendido.')[:300]
@@ -191,7 +319,7 @@ class ProgressStore:
             summary[task['status']] += 1
         return dict(tasks=list(tasks.values()), summary=summary,
                     next_task=next((t['id'] for t in tasks.values() if t['status'] != 'passed'), None),
-                    updated_at=updated_at)
+                    updated_at=updated_at, dynamic_exam=self.dynamic_exam())
 
 
 def load_catalog(path):

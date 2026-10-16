@@ -1,0 +1,15 @@
+---
+# Exame dinâmico (examsim-dinamico) -- instalado só na workstation.
+# Fonte: labs/dyn/ (porte de lab-scripts/dyn/ + lab-scripts/examsim-dinamico.sh do homelab).
+lab_dyn_src: "{{ playbook_dir }}/../labs/dyn"
+lab_dyn_dest: /usr/local/lib/lab-dyn
+lab_dyn_data_dir: /var/lib/rhcsa-lab-dashboard
+# Servidor NFS dos exports /exports/dyn-* (fases server-start/server-finish via root@localhost).
+# No homelab a workstation já tem nfs-utils e o firewalld com nfs/mountd/rpc-bind na zona public.
+# Desligue se outro role (workstation/classroom) já cuidar disso.
+lab_dyn_manage_nfs: true
+lab_dyn_firewalld_services: [nfs, mountd, rpc-bind]
+# Dono dos arquivos que no homelab são de root (só se muda para teste local sem root).
+lab_dyn_root_user: root
+# Arquivos de qa/ que no homelab são de root (os demais são do student).
+lab_dyn_qa_root_files: [validate-alt.sh, alts-d4d7.sh]

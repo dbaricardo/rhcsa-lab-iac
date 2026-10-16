@@ -1,4 +1,13 @@
 ---
+# Mesmo modelo do homelab na workstation:
+#   /usr/local/bin/lab                     = lab_wrapper.py (registra examsim-* no SQLite
+#                                            do dashboard e, se ligado, dispara a revisão por IA)
+#   /usr/local/libexec/rhcsa-lab-original  = dispatcher original (só examsim/full/dinamico),
+#                                            delega por SSH a root@servera/serverb
+#   /usr/local/lib/lab-full/               = orquestrador da prova completa examsim-full
+# Os scripts locais da workstation (examsim-autofs-remoteuser2) vêm do role
+# lab_common e o motor do exame dinâmico (/usr/local/lib/lab-dyn) do role lab_dyn.
+
 - name: Instalar pacotes cliente
   ansible.builtin.dnf:
     name:
@@ -6,12 +15,43 @@
       - bash-completion
       - vim-enhanced
       - tree
+      - python3
     state: present
 
-- name: Instalar dispatcher remoto /usr/local/bin/lab
+- name: Instalar o dispatcher original em /usr/local/libexec/rhcsa-lab-original
   ansible.builtin.copy:
-    src: lab
+    src: rhcsa-lab-original
+    dest: /usr/local/libexec/rhcsa-lab-original
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Instalar o wrapper /usr/local/bin/lab (lab_wrapper.py do dashboard)
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../dashboard/files/lab_wrapper.py"
     dest: /usr/local/bin/lab
     owner: root
     group: root
     mode: "0755"
+
+- name: Criar /usr/local/lib/lab-full
+  ansible.builtin.file:
+    path: /usr/local/lib/lab-full
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Instalar o orquestrador e o enunciado da prova completa (examsim-full)
+  ansible.builtin.copy:
+    src: "lab-full/{{ item.name }}"
+    dest: "/usr/local/lib/lab-full/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { name: examsim-full.sh, mode: "0755" }
+    - { name: examsim-full-enunciado.txt, mode: "0644" }
+  loop_control:
+    label: "{{ item.name }}"
+

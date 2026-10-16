@@ -1,0 +1,3 @@
+---
+# `firewall-cmd --list-all` da serverb do homelab (2026-10-16).
+serverb_firewalld_services: [cockpit, dhcpv6-client, mountd, nfs, rpc-bind, ssh]

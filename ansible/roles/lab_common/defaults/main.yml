@@ -1,0 +1,45 @@
+---
+# Raiz da árvore espelhada do host no repo: labs/hosts/<host>/ reproduz, a
+# partir de "/", exatamente o que existe nas VMs do homelab (ver labs/README.md).
+lab_common_tree: "{{ playbook_dir }}/../labs/hosts/{{ inventory_hostname }}"
+
+# Modo padrão dos scripts examsim-* (igual às VMs do homelab: 0750 root:root).
+lab_common_default_mode: "0750"
+
+# Exceções de modo, copiadas de `stat` nas VMs do homelab (2026-10-16).
+# Chave = caminho absoluto no host.
+lab_common_modes:
+  /usr/local/bin/lab: "0755"
+  /usr/local/lib/lab-common.sh: "0644"
+  /usr/local/lib/lab-network-reset.sh: "0644"
+  /usr/local/lib/lab-full/examsim-full-serverb.sh: "0700"
+  # servera
+  /usr/local/lib/lab-scripts/examsim-flatpak.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-flatpak.sh: "0755"
+  /usr/local/lib/lab-finish/examsim-flatpak.sh: "0755"
+  /usr/local/lib/lab-scripts/examsim-script-args.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-script-args.sh: "0755"
+  /usr/local/lib/lab-finish/examsim-script-args.sh: "0755"
+  /usr/local/lib/lab-scripts/examsim-tuned-servera.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-tuned-servera.sh: "0755"
+  /usr/local/lib/lab-finish/examsim-tuned-servera.sh: "0755"
+  # serverb
+  /usr/local/lib/lab-scripts/examsim-treino-storage.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-treino-storage.sh: "0755"
+  /usr/local/lib/lab-finish/examsim-treino-storage.sh: "0755"
+  /usr/local/lib/lab-scripts/examsim-vgextend.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-vgextend.sh: "0755"
+  /usr/local/lib/lab-finish/examsim-vgextend.sh: "0755"
+  /usr/local/lib/lab-grade/examsim-lvm-resize-home.sh: "0755"
+
+# Exceções de dono, idênticas às VMs do homelab (decisão do usuário,
+# 2026-10-16: mesmo dono do homelab). O resto é root:root.
+lab_common_student_owned:
+  # serverb
+  - /usr/local/lib/lab-scripts/examsim-swap.sh
+  - /usr/local/lib/lab-grade/examsim-swap.sh
+  - /usr/local/lib/lab-finish/examsim-swap.sh
+  - /usr/local/lib/lab-grade/examsim-lvm-mydatabase.sh
+  # workstation
+  - /usr/local/lib/lab-scripts/examsim-autofs-remoteuser2.sh
+  - /usr/local/lib/lab-finish/examsim-autofs-remoteuser2.sh

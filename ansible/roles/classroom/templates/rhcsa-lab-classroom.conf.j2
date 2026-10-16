@@ -1,0 +1,32 @@
+# {{ ansible_managed }}
+# "Classroom" do lab RHCSA -- mesmos vhosts/raízes do nginx do homelab
+# (LXC 205, job rhcsa-lab-repo), aqui na workstation, porta {{ classroom_port }}.
+
+# repo.example.com -- é o PRIMEIRO server da porta no homelab, então também
+# é o que responde a quem chega pelo IP (sem nome conhecido). Mantido igual.
+# O conteúdo do homelab (rhcsa-script/rht-system) é do RH199 e fica de fora:
+# a raiz existe vazia, só para o vhost responder igual.
+server {
+  listen {{ classroom_port }} default_server;
+  server_name repo.example.com;
+  root {{ classroom_webroot }}/rpm;
+  autoindex on;
+}
+
+# flatpak.lab.example.com -- mirror OSTree real do Flathub servido na raiz,
+# para bater com http://flatpak.lab.example.com:8091/myrepo.flatpakrepo.
+server {
+  listen {{ classroom_port }};
+  server_name flatpak.lab.example.com;
+  root {{ classroom_flatpak_repo }};
+  autoindex on;
+}
+
+# content.example.com / classroom.example.com -- mirror parcial de
+# BaseOS/AppStream em /rhel10.0/x86_64/dvd/ e o stub logger em /timer-repo.
+server {
+  listen {{ classroom_port }};
+  server_name content.example.com classroom.example.com;
+  root {{ classroom_webroot }};
+  autoindex on;
+}
