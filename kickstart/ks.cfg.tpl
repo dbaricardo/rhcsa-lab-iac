@@ -9,7 +9,7 @@
 # registrada aqui: cada VM clonada desta imagem precisa do seu próprio registro
 # (registrar 1x na imagem golden faria as 3 VMs clonadas compartilharem o mesmo
 # consumer ID na Red Hat, o que já deu conflito real). Ver
-# docs/tutorial-fim-a-fim.md, passo 8, para o comando manual pós-boot.
+# docs/explanation/arquitetura.md, seção "Subscription e modo offline".
 
 text
 eula --agreed
@@ -66,7 +66,7 @@ tree
 %post --log=/root/ks-post.log --erroronfail
 set -eux
 
-# --- Bug conhecido (ver docs/troubleshooting.md): RHEL10.0/10.x assina
+# --- Bug conhecido (ver docs/explanation/problemas-conhecidos.md): RHEL10.0/10.x assina
 # pacotes com uma 4a chave de release (pos-quantica, key ID 05707a62) que nao
 # vem pre-instalada. Sem isso, dnf install/rpm-build falha com "SIGNATURE:
 # NOT OK". Importar aqui resolve de saida, para ninguem redescobrir.
@@ -90,7 +90,7 @@ else
   echo "AVISO: não foi possível importar a 4a chave de release do RHEL10" \
        "durante o build (sem rede de saída no domínio de build?)." \
        "O role Ansible 'common' reimporta essa chave em toda VM antes de" \
-       "qualquer dnf install -- ver docs/troubleshooting.md." >&2
+       "qualquer dnf install -- ver docs/explanation/problemas-conhecidos.md." >&2
 fi
 
 echo "${STUDENT_USER} ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/${STUDENT_USER}"
@@ -107,7 +107,7 @@ chown "${STUDENT_USER}:${STUDENT_USER}" "/home/${STUDENT_USER}/.ssh/authorized_k
 
 systemctl enable sshd firewalld chronyd NetworkManager
 
-# --- Bug conhecido (ver docs/troubleshooting.md): clonar uma VM sem
+# --- Bug conhecido (ver docs/explanation/problemas-conhecidos.md): clonar uma VM sem
 # regenerar /etc/machine-id pode deixar o arquivo com contexto SELinux
 # unlabeled_t apos o clone, derrubando journald -> dbus -> NetworkManager em
 # cascata sem nenhum AVC visivel em ausearch (so aparece em dmesg). Zerar

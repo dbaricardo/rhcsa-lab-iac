@@ -5,7 +5,7 @@
 # só a partição/PV fosse limpa, a tabela de partições continuaria no disco
 # e resolve_disco() (que exige disco CRU) nunca mais o encontraria no
 # próximo "lab start storage-lvm-01", quebrando o exercício permanentemente
-# (bug já visto em produção, ver docs/troubleshooting.md).
+# (bug já visto em produção, ver docs/explanation/problemas-conhecidos.md).
 set -uo pipefail
 source /usr/local/lib/lab-common.sh 2>/dev/null || true
 

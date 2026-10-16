@@ -3,7 +3,7 @@
 # de machines.yaml -> serverb.extra_disks) -- nunca particiona/formata aqui.
 # Os discos ficam brutos de propósito: os próprios exercícios de LVM/storage
 # praticam pvcreate/mkfs do zero, fiel ao exame real. Nunca referenciamos
-# /dev/sdX por nome (bug conhecido, ver docs/troubleshooting.md) -- a
+# /dev/sdX por nome (bug conhecido, ver docs/explanation/problemas-conhecidos.md) -- a
 # contagem por TAMANHO usa a mesma lógica de lab-common.sh.
 
 - name: Ler specs de discos extra de machines.yaml

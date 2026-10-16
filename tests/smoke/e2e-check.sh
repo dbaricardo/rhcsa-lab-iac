@@ -5,10 +5,10 @@
 # NÃO valida se o exercício foi resolvido corretamente -- só confirma que os
 # três comandos executam sem falha de INFRAESTRUTURA (SSH, dispatcher,
 # dashboard). Código de saída 2 == falha real de conectividade/infra,
-# refletindo o mesmo contrato do dispatcher `lab` (ver docs/architecture.md).
+# refletindo o mesmo contrato do dispatcher `lab` (ver docs/explanation/arquitetura.md).
 #
 # Seguro de rodar múltiplas vezes: users-groups-01/start.sh é idempotente
-# (contrato de docs/exercises-authoring-guide.md) e finish.sh sempre roda no
+# (contrato de docs/reference/contrato-exercicios.md) e finish.sh sempre roda no
 # final, deixando o exercício limpo.
 set -uo pipefail
 
@@ -91,7 +91,7 @@ ok "'$EXAMPLE_LAB' aparece no catálogo"
 # Só confirma que o ciclo completo roda sem erro de infraestrutura -- não
 # resolve o exercício de verdade, então "lab grade" deve reportar FALHOU (é
 # esperado) e ainda assim sair com código 0, por contrato do grade.sh (ver
-# docs/exercises-authoring-guide.md). Um código de saída diferente de 0 aqui
+# docs/reference/contrato-exercicios.md). Um código de saída diferente de 0 aqui
 # indica falha de infra (ex.: SSH para o host do exercício não funcionou),
 # não o resultado do exercício em si.
 for action in start grade finish; do

@@ -7,7 +7,7 @@ RHEL 10 própria: três VMs (`workstation`, `servera`, `serverb`) criadas por
 catálogo extensível de exercícios práticos, correção automática e um
 dashboard web de acompanhamento. Um comando (`make deploy`) faz tudo.
 
-**Primeira vez aqui? Siga o [tutorial completo](docs/tutorial-fim-a-fim.md)**
+**Primeira vez aqui? Siga o [tutorial completo](docs/tutorials/primeiro-lab-fim-a-fim.md)**
 — ele assume zero conhecimento prévio deste repositório e cobre cada passo,
 do zero até resolver o primeiro exercício.
 
@@ -38,7 +38,7 @@ No host onde as VMs vão rodar (Linux com suporte a KVM):
 
 Rode `make check-env` para validar tudo isso automaticamente antes de
 continuar. Detalhes de como obter a conta/ISO estão no
-[tutorial completo](docs/tutorial-fim-a-fim.md).
+[tutorial completo](docs/tutorials/primeiro-lab-fim-a-fim.md).
 
 ## Passo a passo resumido
 
@@ -109,7 +109,7 @@ Lista completa de targets do `Makefile`: `make help`.
 - **RHEL 10 real**, não uma distribuição derivada, porque o objetivo é
   praticar para um exame que é aplicado sobre RHEL de verdade (registro via
   Red Hat Developer Subscription for Individuals, gratuita). Há uma
-  [nota sobre fallback com Rocky Linux](docs/rocky-linux-fallback.md), mas
+  [guia para usar Rocky Linux](docs/how-to/usar-rocky-linux.md), mas
   não é o caminho testado/mantido com o mesmo rigor.
 - **Dispatcher `lab` (remoto, na workstation) delega por SSH** para
   `lab-remote` (local, em servera/serverb) — o dispatcher remoto nunca
@@ -118,27 +118,24 @@ Lista completa de targets do `Makefile`: `make help`.
   silenciosamente pular a etapa.
 
 Detalhes completos, diagrama da topologia e as decisões de design com o
-porquê: [docs/architecture.md](docs/architecture.md).
+porquê: [docs/explanation/arquitetura.md](docs/explanation/arquitetura.md).
 
-## Problemas conhecidos
+## Documentação
 
-Bugs reais já encontrados em produção (GPG/assinatura de pacotes, enumeração
-instável de disco, SELinux `unlabeled_t` pós-clone, limite de sistemas da
-subscription gratuita, entre outros), já mitigados no código, mas úteis de
-conhecer: [docs/troubleshooting.md](docs/troubleshooting.md).
+A documentação segue o [Diátaxis](https://diataxis.fr) — índice completo em
+[docs/README.md](docs/README.md):
 
-## Contribuindo com novos exercícios
-
-`labs/` contém um conjunto extensível de exercícios originais, cobrindo os
-domínios públicos do blueprint EX200. Para escrever um novo exercício
-(estrutura de arquivos, contrato de saída do `grade.sh`, regras não
-negociáveis), ver o
-[guia de autoria de exercícios](docs/exercises-authoring-guide.md).
+| Quero… | Comece por |
+|---|---|
+| montar o lab pela primeira vez | [Tutorial: do zero ao primeiro exercício](docs/tutorials/primeiro-lab-fim-a-fim.md) |
+| fazer uma tarefa específica | [Operar o lab](docs/how-to/operar-o-lab.md), [Modo offline](docs/how-to/deploy-offline.md), [Resolver problemas](docs/how-to/resolver-problemas.md), [Criar um exercício](docs/how-to/criar-exercicio.md) |
+| consultar comandos e valores | [Makefile](docs/reference/makefile.md), [Configuração](docs/reference/configuracao.md), [Comando `lab`](docs/reference/comando-lab.md), [Catálogo](docs/reference/catalogo-exercicios.md) |
+| entender o porquê | [Arquitetura](docs/explanation/arquitetura.md), [Problemas conhecidos](docs/explanation/problemas-conhecidos.md) |
 
 ## Direitos autorais
 
 Este projeto **não inclui** nenhum trecho do material oficial de treinamento
 da Red Hat ("RH199 Rapid Track Student Workbook" ou qualquer outro). Os
 exercícios são escritos do zero pelo autor. Ver
-[NOTICE.md](NOTICE.md) e [docs/copyright-notice.md](docs/copyright-notice.md)
+[NOTICE.md](NOTICE.md) e [docs/explanation/direitos-autorais.md](docs/explanation/direitos-autorais.md)
 para o contexto completo.

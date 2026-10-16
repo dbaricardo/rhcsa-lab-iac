@@ -133,7 +133,7 @@ check_qemu_pode_alcancar() {
   dir="$(dirname "$path")"
   while true; do
     if ! is_world_executable "$dir" && ! acl_concede_busca_qemu "$dir"; then
-      fail "$label: '$dir' não tem permissão de busca (x) para 'outros' -- o processo qemu (usuário não-root de qemu:///system) não vai conseguir abrir '$target'. Rode: setfacl -m u:qemu:--x '$dir' (ver docs/troubleshooting.md)"
+      fail "$label: '$dir' não tem permissão de busca (x) para 'outros' -- o processo qemu (usuário não-root de qemu:///system) não vai conseguir abrir '$target'. Rode: setfacl -m u:qemu:--x '$dir' (ver docs/how-to/resolver-problemas.md)"
       return
     fi
     [ "$dir" = "/" ] && break
@@ -154,6 +154,6 @@ if [ "$FAILURES" -eq 0 ]; then
   exit 0
 else
   echo "$FAILURES verificação(ões) falharam. Corrija antes de continuar" \
-       "(ver docs/tutorial-fim-a-fim.md)."
+       "(ver docs/tutorials/primeiro-lab-fim-a-fim.md)."
   exit 1
 fi

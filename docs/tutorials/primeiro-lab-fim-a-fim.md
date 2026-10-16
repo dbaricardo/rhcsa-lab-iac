@@ -1,11 +1,16 @@
-# Tutorial fim a fim
+# Tutorial: do zero ao primeiro exercício resolvido
 
-Este tutorial assume que você nunca viu este repositório antes. Ele cobre
-tudo, do zero: instalar os pré-requisitos no seu computador, conseguir uma
-ISO do RHEL 10, construir o ambiente e resolver seu primeiro exercício.
+Neste tutorial você vai montar o laboratório RHCSA no seu computador e
+resolver um exercício de ponta a ponta. Não precisa conhecer este
+repositório, Terraform nem Ansible: siga os passos na ordem.
 
-Se você já tem tudo instalado e só quer o resumo rápido, veja o
-[README.md](../README.md).
+No fim você terá:
+
+- três VMs RHEL 10 (`workstation`, `servera`, `serverb`) rodando;
+- o dashboard de progresso aberto no navegador;
+- o exercício `users-groups-01` resolvido e corrigido.
+
+Tempo total: cerca de 1 hora, a maior parte esperando a instalação do RHEL.
 
 ## 1. Pré-requisitos do host
 
@@ -107,13 +112,11 @@ Subscription for Individuals** (gratuita).
      `console.redhat.com` -> ícone de perfil -> "My User Access" /
      "Account settings").
 
-Os dois vão para o `.env` no passo 4. O Ansible registra **cada VM
-individualmente, depois de clonada** — nunca a imagem golden. Isso é
-deliberado: se a imagem já saísse registrada, as 3 VMs clonadas
-compartilhariam o mesmo consumer ID na Red Hat (já causou conflito real).
+Os dois vão para o `.env` no passo 4. O deploy registra cada VM sozinho
+([por que cada VM, e não a imagem](../explanation/arquitetura.md#subscription-e-modo-offline)).
 
-Sem conta Red Hat? Dá para testar a infraestrutura com `make
-deploy-offline` (passo 7), que serve os pacotes a partir da própria ISO.
+Sem conta Red Hat? Siga o tutorial mesmo assim e, no passo 6, use `make
+deploy-offline` no lugar de `make deploy`.
 
 ## 3. Baixar a ISO do RHEL 10
 
@@ -173,31 +176,16 @@ deploy'`. Se algo falhar, a própria saída indica o comando de correção.
 make deploy
 ```
 
-Um único comando, sem interação, que encadeia três etapas:
+Um único comando, sem interação. Ele vai, nesta ordem:
 
-1. **Imagem golden** (`make build-image`, só se `output/` ainda não tiver a
-   imagem):
-   - gera um par de chaves SSH novo em `output/student_key` (nunca
-     commitado), usado pelo Ansible e pelos atalhos `make ssh-*`;
-   - renderiza o kickstart (`kickstart/ks.cfg.tpl`) com as variáveis do
-     `.env` e a chave pública (a senha entra como hash SHA-512, nunca em
-     texto plano);
-   - cria um disco qcow2 e roda `virt-install` contra a sua ISO, injetando
-     o kickstart — instalação 100% desassistida, que termina com
-     `poweroff`;
-   - roda um sysprep leve offline (`image/finalize.sh`, via
-     `virt-customize`): remove chaves SSH de host, limpa logs (incluindo
-     `anaconda-ks.cfg`, que carrega o hash da senha), corrige contexto
-     SELinux.
-2. **Infraestrutura** (`make infra`): `terraform apply` cria a rede NAT
-   `192.168.56.0/24`, os discos (clones copy-on-write da imagem golden + discos
-   extras da `serverb`) e as 3 VMs, cada uma com IP estático conforme
-   `machines.yaml`, e gera o inventário do Ansible em
-   `output/inventory.yml`.
-3. **Configuração** (`make provision`): o playbook `ansible/site.yml`
-   registra cada VM na subscription, cria o usuário `student`, configura o
-   SSH cruzado entre as VMs, instala os pacotes de cada papel, os
-   exercícios atribuídos a cada host e o dashboard web na `workstation`.
+1. instalar o RHEL 10 da sua ISO numa imagem base (só na primeira vez);
+2. criar a rede e as 3 VMs a partir dessa imagem (Terraform);
+3. configurar as VMs: subscription, pacotes, exercícios e dashboard
+   (Ansible).
+
+Quer saber o que acontece em cada etapa? Leia depois a
+[Arquitetura](../explanation/arquitetura.md) e a
+[Imagem golden](../explanation/imagem-golden.md) — não é preciso agora.
 
 **Tempo estimado:** na primeira vez, entre 15 e 30 minutos — a maior parte
 é a instalação desassistida do RHEL (10 a 20 minutos). Nas vezes seguintes,
@@ -208,24 +196,11 @@ a saída do `terraform apply` e, por fim, a saída do Ansible task a task. O
 `make deploy` termina chamando `make status`, que lista as VMs e imprime a
 URL do dashboard.
 
-Se algo falhar, cada etapa pode ser rodada de novo isoladamente (`make
-build-image`, `make infra`, `make provision`) — o Terraform e o Ansible são
-idempotentes, então reaplicar não duplica nada.
+Se algo falhar, rode `make check-env` e veja
+[Resolver problemas](../how-to/resolver-problemas.md). Depois de corrigir,
+rodar `make deploy` de novo é seguro: ele continua de onde parou.
 
-## 7. Modo offline (opcional, sem subscription)
-
-Para testar a infraestrutura sem gastar um slot de subscription:
-
-```bash
-make deploy-offline
-```
-
-É o mesmo fluxo do passo 6, mas o Ansible não registra as VMs: os pacotes
-vêm da própria DVD ISO, servida por HTTP a partir do host. Não é um
-substituto de produção (sem updates/erratas) — ver
-[docs/troubleshooting.md](troubleshooting.md#modo-offline-via-iso).
-
-## 8. Conferir o acesso às VMs
+## 7. Conferir o acesso às VMs
 
 ```bash
 make status
@@ -253,7 +228,7 @@ até o fim sem erros (`make provision` de novo mostra o que falta).
 Saia da sessão SSH (`exit` ou `Ctrl+D`) quando terminar. Os atalhos `make
 ssh-servera` e `make ssh-serverb` funcionam da mesma forma.
 
-## 9. Acessar o dashboard
+## 8. Acessar o dashboard
 
 A URL impressa pelo `make status` é, por padrão:
 
@@ -269,7 +244,7 @@ Se a página não carregar, confirme a origem permitida em `machines.yaml` ->
 `dashboard.allowed_source` — por padrão é a própria rede privada do lab
 (`192.168.56.0/24`), que já inclui a interface do libvirt no seu host.
 
-## 10. Resolver um exercício de ponta a ponta
+## 9. Resolver um exercício de ponta a ponta
 
 Vamos usar `users-groups-01` como exemplo — um exercício simples, de um
 único host (`servera`).
@@ -307,7 +282,7 @@ A saída mostra uma linha `OK:`/`FALHOU:` por critério avaliado, terminando
 com `RESULTADO: PASSOU` ou `RESULTADO: FALHOU`. Rode `lab grade` quantas
 vezes quiser — é uma operação somente leitura, não altera nada.
 
-Atualize o dashboard no navegador (passo 9): o exercício `users-groups-01`
+Atualize o dashboard no navegador (passo 8): o exercício `users-groups-01`
 deve aparecer com o resultado mais recente.
 
 Quando terminar de estudar esse exercício, limpe o ambiente:
@@ -316,14 +291,13 @@ Quando terminar de estudar esse exercício, limpe o ambiente:
 lab finish users-groups-01
 ```
 
-Isso reverte explicitamente o que `lab start` preparou (nunca reinvoca
-`start.sh` para isso — ver [troubleshooting.md](troubleshooting.md)),
-deixando `servera` pronta para o próximo exercício.
+Isso desfaz o que `lab start` preparou e o que você criou, deixando
+`servera` pronta para o próximo exercício.
 
-## 11. `make destroy`
+## 10. Desligar o lab
 
-Antes de destruir, se sua subscription gratuita tiver poucos slots, libere-os
-primeiro (opcional, mas evita ter que limpar depois pelo console web):
+Antes de destruir, libere as vagas da sua subscription gratuita (se usou
+`make deploy-offline`, pule este comando):
 
 ```bash
 for h in workstation servera serverb; do
@@ -337,22 +311,20 @@ Quando terminar a sessão de estudo:
 make destroy
 ```
 
-Isso roda `terraform destroy`: remove as 3 VMs, os discos e a rede do lab —
-nada fica para trás no libvirt. **A imagem golden em `output/` não é
-removida**, então da próxima vez basta `make deploy` de novo, que pula a
-construção da imagem e só recria VMs + Ansible. Para recomeçar com uma
-imagem base nova, rode `make build-image` antes.
+Isso remove as 3 VMs, os discos e a rede. A imagem base fica guardada em
+`output/`: da próxima vez, `make deploy` leva poucos minutos.
 
-## Onde ir depois
+## Pronto
 
-- [docs/architecture.md](architecture.md) — como as peças se encaixam e por
-  quê.
-- [docs/troubleshooting.md](troubleshooting.md) — bugs conhecidos, caso
-  encontre algum sintoma parecido.
-- [docs/exercises-authoring-guide.md](exercises-authoring-guide.md) — como
-  escrever seus próprios exercícios em `labs/`.
-- [docs/rocky-linux-fallback.md](rocky-linux-fallback.md) — se quiser testar
-  a infraestrutura sem uma ISO RHEL.
-- [NOTICE.md](../NOTICE.md) / [docs/copyright-notice.md](copyright-notice.md)
-  — contexto sobre direitos autorais e o que este repositório
-  deliberadamente não inclui.
+Você montou o lab do zero e resolveu um exercício completo. Daqui em
+diante:
+
+- **Estudar:** `lab list` mostra todos os exercícios
+  ([catálogo](../reference/catalogo-exercicios.md)); o ciclo é sempre
+  `lab start` → resolver → `lab grade` → `lab finish`.
+- **Operar o lab** (religar, reaplicar, recriar):
+  [guia de operação](../how-to/operar-o-lab.md).
+- **Algo quebrou:** [Resolver problemas](../how-to/resolver-problemas.md).
+- **Entender como funciona:** [Arquitetura](../explanation/arquitetura.md).
+- **Escrever seus exercícios:** [Criar um exercício](../how-to/criar-exercicio.md).
+- Índice completo da documentação: [docs/README.md](../README.md).

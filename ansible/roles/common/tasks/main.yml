@@ -16,8 +16,8 @@
     mode: "0440"
     validate: "visudo -cf %s"
 
-# Modo TESTE/aceitação, sem subscription real (ver docs/troubleshooting.md,
-# seção "Modo offline via ISO", e scripts/offline-repo.sh): quando
+# Modo TESTE/aceitação, sem subscription real (ver docs/how-to/deploy-offline.md
+# e docs/explanation/arquitetura.md, seção "Subscription e modo offline", e scripts/offline-repo.sh): quando
 # lab_offline_repo_url estiver preenchida, aponta BaseOS/AppStream para o
 # HTTP servido a partir da DVD ISO montada no host, em vez dos repos da Red
 # Hat CDN -- não substitui a subscription real (sem updates/erratas), só
@@ -100,7 +100,7 @@
     group: root
     mode: "0644"
 
-# Bug conhecido (ver docs/troubleshooting.md): RHEL10.0/10.x assina pacotes
+# Bug conhecido (ver docs/explanation/problemas-conhecidos.md): RHEL10.0/10.x assina pacotes
 # com uma 4a chave de release pos-quantica ausente por padrao. O kickstart do
 # imagem golden já importa isso, mas repetir aqui protege quem clonar/usar um
 # imagem RHEL10 genérica própria (fora do fluxo scripts/build-image.sh deste repo).
@@ -116,7 +116,7 @@
     msg: >-
       Não foi possível importar a 4a chave de release do RHEL10 automaticamente
       (sem rede de saída no domínio libvirt?). Se `dnf install` falhar com
-      "SIGNATURE: NOT OK", ver docs/troubleshooting.md.
+      "SIGNATURE: NOT OK", ver docs/explanation/problemas-conhecidos.md.
   when: gpg_key_import is failed
 
 - name: Instalar chrony
@@ -141,7 +141,7 @@
     policy: targeted
     state: enforcing
 
-# Bug conhecido (ver docs/troubleshooting.md): clonar uma VM pode deixar
+# Bug conhecido (ver docs/explanation/problemas-conhecidos.md): clonar uma VM pode deixar
 # /etc/machine-id ou perfis de rede com contexto SELinux unlabeled_t, o que
 # derruba journald -> dbus -> NetworkManager em cascata sem AVC visível em
 # ausearch (só aparece em dmesg). O kickstart e image/finalize.sh já mitigam,

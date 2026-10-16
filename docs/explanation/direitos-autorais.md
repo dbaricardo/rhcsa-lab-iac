@@ -1,6 +1,6 @@
-# Nota de direitos autorais (contexto completo)
+# Direitos autorais: o que este projeto inclui e por quê
 
-Este documento expande o aviso curto de [`NOTICE.md`](../NOTICE.md) com o
+Este documento expande o aviso curto de [`NOTICE.md`](../../NOTICE.md) com o
 contexto completo de por que este repositório existe da forma como existe.
 
 ## Origem do projeto
@@ -46,7 +46,7 @@ Isso significa que:
   (`grade.sh`)** de cada exercício são redação original do autor, escrita
   especificamente para este projeto.
 
-Ver o [guia de autoria de exercícios](exercises-authoring-guide.md) para a
+Ver o [guia de criação de exercícios](../how-to/criar-exercicio.md) para a
 regra explícita que qualquer novo exercício precisa seguir: nunca incluir
 texto do RH199, nem enunciado nem solução literal.
 
@@ -64,7 +64,7 @@ Este repositório nunca inclui, empacota ou redistribui a ISO do RHEL. O
 usuário final precisa baixar sua própria ISO a partir de uma conta Red Hat
 Developer Subscription for Individuals (gratuita) e apontar o caminho local
 dela via `.env` (`RHEL_ISO_PATH`) — ver
-[docs/tutorial-fim-a-fim.md](tutorial-fim-a-fim.md).
+o [tutorial](../tutorials/primeiro-lab-fim-a-fim.md).
 
 ## Dúvidas ou solicitações de remoção
 

@@ -7,7 +7,7 @@
 # serve para start.sh escolher o disco, não para reencontrá-lo depois de
 # particionado. Usar resolve_disco() aqui faria este grade.sh reportar
 # FALHOU sempre, mesmo com o exercício resolvido corretamente (mesma classe
-# de bug já documentada em docs/troubleshooting.md e corrigida em
+# de bug já documentada em docs/explanation/problemas-conhecidos.md e corrigida em
 # labs/storage-lvm-01/finish.sh).
 set -uo pipefail
 source /usr/local/lib/lab-common.sh

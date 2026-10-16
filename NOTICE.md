@@ -25,7 +25,7 @@ exame é público — a redação dos cenários, instruções e critérios de
 avaliação é original.
 
 Para mais contexto sobre essa distinção, ver
-[docs/copyright-notice.md](docs/copyright-notice.md).
+[docs/explanation/direitos-autorais.md](docs/explanation/direitos-autorais.md).
 
 ## Uso da marca
 

@@ -1,4 +1,8 @@
-# Arquitetura
+# Arquitetura do lab
+
+Como as peças se encaixam e por que foram desenhadas assim. Para os
+valores exatos (IPs, portas, variáveis), ver a
+[Referência de configuração](../reference/configuracao.md).
 
 ## Topologia
 
@@ -67,14 +71,33 @@ make deploy
 - **Ansible cuida de tudo dentro das VMs.** O inventário é gerado pelo
   próprio Terraform (`local_file`), com as variáveis que os roles esperam
   (`lab_domain`, `dashboard_port`, IPs etc.).
-- **Subscription**: nunca na imagem (as 3 VMs clonadas compartilhariam a
-  mesma identidade na Red Hat). Cada VM é registrada pelo role `common`
-  depois de clonada, com `RHSM_ORG_ID`/`RHSM_ACTIVATION_KEY` do `.env`. Sem
-  essas variáveis, o playbook confere se você registrou à mão e falha cedo
-  se não. No modo offline (`make deploy-offline`) o registro é pulado e
-  BaseOS/AppStream vêm da ISO, servidos por HTTP no gateway da rede.
+- **Subscription**: registrada por VM, nunca na imagem — ver
+  [Subscription e modo offline](#subscription-e-modo-offline).
 - O provider `dmacvicar/libvirt` está fixado em `0.8.3`: a linha 0.9.x
   reescreveu o schema inteiro e quebraria `main.tf`.
+
+## Subscription e modo offline
+
+**Por que nunca registrar a imagem golden:** as 3 VMs são clones da mesma
+imagem. Se ela saísse registrada, as três compartilhariam o mesmo consumer
+ID na Red Hat — o que já causou conflito real (uma VM "rouba" a identidade
+da outra). Por isso o kickstart não registra nada, e o role `common`
+registra **cada VM depois de clonada**, uma a uma, com
+`RHSM_ORG_ID`/`RHSM_ACTIVATION_KEY` do `.env`.
+
+**Por que falhar cedo:** sem as variáveis e sem registro manual, o role
+`common` confere `subscription-manager identity` e para antes de qualquer
+`dnf`. Sem esse assert, o erro apareceria bem depois, como um "repositório
+vazio" genérico, difícil de ligar à causa.
+
+**Modo offline:** existe só para testar a infraestrutura sem conta Red Hat
+(CI, host descartável). `scripts/offline-repo.sh` monta a DVD ISO somente
+leitura e serve `BaseOS/` e `AppStream/` por `python3 -m http.server` no
+gateway da rede do lab (`192.168.56.1:8080`). O `Makefile` passa
+`lab_offline_repo_url` ao Ansible; com ela preenchida, o role `common`
+aponta os repositórios para esse HTTP e pula o assert de subscription — é a
+forma explícita de dizer "sem subscription de propósito". O preço: nenhum
+update ou errata, só o conteúdo congelado da ISO.
 
 ## Dashboard não é uma 4ª VM
 
@@ -160,7 +183,8 @@ pé para autorizar neles a chave da `workstation`.
 ## Sem Packer
 
 A imagem golden é construída direto por `virt-install` + kickstart
-(`scripts/build-image.sh`), sem passar por Packer. Decisão deliberada: reduzir
+(`scripts/build-image.sh`, detalhes em [Imagem golden](imagem-golden.md)),
+sem passar por Packer. Decisão deliberada: reduzir
 o número de ferramentas que o usuário final precisa instalar e aprender.
 `virt-install` já é necessário de qualquer forma (é o mecanismo usado para a
 instalação desassistida), então evitar Packer elimina uma dependência
@@ -173,9 +197,25 @@ Terraform) é reproduzível e não depende de nenhum builder externo.
 O objetivo do laboratório é treinar para um exame aplicado sobre RHEL de
 verdade, incluindo comportamentos que só existem por causa do registro via
 subscription (repositórios, bug de GPG da 4ª chave — ver
-[troubleshooting.md](troubleshooting.md)). Por isso o projeto usa a ISO RHEL
+[Problemas conhecidos](problemas-conhecidos.md)). Por isso o projeto usa a ISO RHEL
 10 real do usuário, registrada via Red Hat Developer Subscription for
 Individuals (gratuita), em vez de uma distribuição binariamente compatível.
-Há uma [nota de fallback com Rocky Linux](rocky-linux-fallback.md) para quem
+Há uma [guia de uso com Rocky Linux](../how-to/usar-rocky-linux.md) para quem
 quiser testar só a mecânica da infraestrutura, mas esse caminho não é
 mantido com o mesmo rigor.
+
+## Por que Terraform + Ansible (e não Vagrant)
+
+Até 2026-10 o projeto usava Vagrant (`vagrant-libvirt`). Foi trocado porque:
+
+- **Estado explícito:** o Terraform sabe exatamente o que criou; `make
+  destroy` remove domínios, volumes e rede sem deixar sobras (validado no
+  teste de aceitação T11).
+- **Menos peças frágeis:** o plugin `vagrant-libvirt` precisa compilar gems
+  nativas no host e usava defaults (vídeo `cirrus`, máquina `pc`) que o
+  libvirt do RHEL/Rocky 10 rejeita.
+- **Separação clara:** Terraform cuida do que fica fora das VMs; Ansible, do
+  que fica dentro. Os dois leem o mesmo `machines.yaml`.
+- **Um comando:** `make deploy` encadeia imagem, infraestrutura e
+  configuração, sem passos manuais no meio — inclusive o registro da
+  subscription, antes manual.
