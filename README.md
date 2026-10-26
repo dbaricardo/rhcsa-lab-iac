@@ -137,7 +137,7 @@ A documentação segue o [Diátaxis](https://diataxis.fr) — índice completo e
 | Quero… | Comece por |
 |---|---|
 | montar o lab pela primeira vez | [Tutorial: do zero ao primeiro exercício](docs/tutorials/primeiro-lab-fim-a-fim.md) |
-| fazer uma tarefa específica | [Operar o lab](docs/how-to/operar-o-lab.md), [Modo offline](docs/how-to/deploy-offline.md), [Resolver problemas](docs/how-to/resolver-problemas.md), [Criar um exercício](docs/how-to/criar-exercicio.md) |
+| fazer uma tarefa específica | [Deploy em Linux](docs/how-to/deploy-linux.md), [Deploy no Windows](docs/how-to/deploy-windows.md), [Operar o lab](docs/how-to/operar-o-lab.md), [Modo offline](docs/how-to/deploy-offline.md), [Resolver problemas](docs/how-to/resolver-problemas.md), [Criar um exercício](docs/how-to/criar-exercicio.md) |
 | consultar comandos e valores | [Makefile](docs/reference/makefile.md), [Configuração](docs/reference/configuracao.md), [Comando `lab`](docs/reference/comando-lab.md), [Catálogo](docs/reference/catalogo-exercicios.md) |
 | entender o porquê | [Arquitetura](docs/explanation/arquitetura.md), [Problemas conhecidos](docs/explanation/problemas-conhecidos.md) |
 

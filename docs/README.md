@@ -18,6 +18,10 @@ Organizada segundo o [Diátaxis](https://diataxis.fr): cada documento tem um
 
 ## Guias práticos
 
+- [Fazer o deploy num host Linux](how-to/deploy-linux.md) — dependências
+  por distribuição, libvirt, `.env`, `make deploy`.
+- [Fazer o deploy no Windows](how-to/deploy-windows.md) — WSL2 ou VM Linux
+  com virtualização aninhada (não testado).
 - [Operar o lab no dia a dia](how-to/operar-o-lab.md) — SSH, reaplicar o
   Ansible, mudar a topologia, reconstruir a imagem, destruir e recriar.
 - [Testar sem subscription (modo offline)](how-to/deploy-offline.md)
