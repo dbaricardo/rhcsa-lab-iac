@@ -25,6 +25,7 @@ scripts, o Terraform e o Ansible — ver [configuração](configuracao.md).
 | `ssh-workstation`, `ssh-servera`, `ssh-serverb` | Shell interativo como `student`, via `scripts/lab-ssh.sh` |
 | `destroy` | `offline-repo-stop` + `terraform destroy -auto-approve` + remove `output/inventory.yml`. **Mantém** a imagem golden |
 | `offline-repo-stop` | Para o HTTP do modo offline e desmonta a ISO |
+| `ai-reviewer` | `scripts/setup-ai-reviewer.sh`: instala o revisor neste host, liga gravação/IA no `.env`, roda `provision` (ou `provision-offline` sem `RHSM_ORG_ID`; force com `MODE=online|offline`), autoriza a chave da workstation e faz uma revisão de teste |
 
 ## Desenvolvimento
 

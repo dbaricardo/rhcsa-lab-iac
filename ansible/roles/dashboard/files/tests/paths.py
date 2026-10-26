@@ -16,6 +16,7 @@ WORKSTATION_FILES = ROLES / 'workstation' / 'files'
 LAB_FULL = WORKSTATION_FILES / 'lab-full'
 HOSTS = REPO / 'labs' / 'hosts'
 REVIEWER = REPO / 'contrib' / 'ai-reviewer' / 'rhcsa-ai-review'
+REVIEWER_OPENAI = REPO / 'contrib' / 'ai-reviewer' / 'rhcsa-ai-review-openai'
 
 for _path in (FILES, AI_REVIEW_DIR):
     if str(_path) not in sys.path:

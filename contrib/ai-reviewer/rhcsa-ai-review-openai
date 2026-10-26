@@ -1,0 +1,58 @@
+#!/usr/bin/python3
+"""Revisor de reserva para APIs compatíveis com OpenAI (LM Studio, Ollama, vLLM...).
+
+Chamado por rhcsa-ai-review via RHCSA_REVIEW_FALLBACK: lê o prompt no stdin,
+o prompt de sistema em RHCSA_REVIEW_SYSTEM e devolve a revisão em Markdown.
+
+  RHCSA_REVIEW_FALLBACK_URL      base da API, ex.: http://localhost:1234/v1
+  RHCSA_REVIEW_FALLBACK_MODEL    nome do modelo no servidor
+  RHCSA_REVIEW_FALLBACK_API_KEY  opcional (servidores locais não pedem)
+"""
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.request
+
+TIMEOUT_S = 330  # abaixo dos 360 s que rhcsa-ai-review dá à reserva
+THINK = re.compile(r'<think>.*?</think>', re.DOTALL)
+
+
+def main():
+    url = os.environ.get('RHCSA_REVIEW_FALLBACK_URL', '').rstrip('/')
+    model = os.environ.get('RHCSA_REVIEW_FALLBACK_MODEL', '')
+    if not url or not model:
+        print('defina RHCSA_REVIEW_FALLBACK_URL e RHCSA_REVIEW_FALLBACK_MODEL', file=sys.stderr)
+        return 2
+    body = json.dumps({
+        'model': model,
+        'temperature': 0.2,
+        'messages': [
+            {'role': 'system', 'content': os.environ.get('RHCSA_REVIEW_SYSTEM', '')},
+            {'role': 'user', 'content': sys.stdin.read()},
+        ],
+    }).encode()
+    headers = {'Content-Type': 'application/json'}
+    key = os.environ.get('RHCSA_REVIEW_FALLBACK_API_KEY', '')
+    if key:
+        headers['Authorization'] = f'Bearer {key}'
+    req = urllib.request.Request(f'{url}/chat/completions', data=body, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
+            data = json.load(resp)
+        text = data['choices'][0]['message']['content'] or ''
+    except (urllib.error.URLError, OSError, ValueError, KeyError, IndexError) as exc:
+        print(f'API {url}: {exc}'[:300], file=sys.stderr)
+        return 1
+    # Modelos de raciocínio (Qwen, DeepSeek) devolvem o "pensamento" junto.
+    text = THINK.sub('', text).strip()
+    if not text:
+        print('resposta vazia do modelo', file=sys.stderr)
+        return 1
+    print(text)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

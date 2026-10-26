@@ -15,7 +15,7 @@ OFFLINE_URL := http://$(shell python3 -c "import yaml;print(yaml.safe_load(open(
 
 .PHONY: help check-env catalog build-image infra provision provision-offline \
 	deploy deploy-offline status destroy offline-repo-stop \
-	ssh-workstation ssh-servera ssh-serverb lint test-dashboard
+	ssh-workstation ssh-servera ssh-serverb ai-reviewer lint test-dashboard
 
 help: ## Lista os targets disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -54,6 +54,9 @@ provision: catalog ## Roda o Ansible (registra a subscription se RHSM_* estiver 
 provision-offline: catalog ## Roda o Ansible SEM subscription (repos servidos da ISO)
 	@bash scripts/offline-repo.sh start
 	@$(PLAYBOOK) -e lab_offline_repo_url=$(OFFLINE_URL) -e lab_iso_url=$(OFFLINE_URL)
+
+ai-reviewer: ## Liga a revisão por IA usando este host como revisor (Claude CLI ou API OpenAI-compatível)
+	@bash scripts/setup-ai-reviewer.sh $(MODE)
 
 status: ## Mostra o estado das VMs e a URL do dashboard
 	@virsh -c qemu:///system list --all | grep -E 'Id|---|rhcsa-lab' || true

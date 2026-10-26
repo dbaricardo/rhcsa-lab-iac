@@ -5,7 +5,10 @@ Recebe no stdin o JSON montado por ai_review.py na workstation, chama o Claude
 em modo headless sem ferramentas e devolve a revisão em Markdown no stdout.
 Opcional: se RHCSA_REVIEW_FALLBACK apontar para um executável, ele é usado
 como revisor de reserva quando o Claude falha (recebe o prompt no stdin e o
-prompt de sistema em RHCSA_REVIEW_SYSTEM). Ver README.md neste diretório.
+prompt de sistema em RHCSA_REVIEW_SYSTEM). Sem o Claude instalado, a reserva
+vira o revisor principal (ex.: rhcsa-ai-review-openai, para LLM local ou API
+compatível com OpenAI). As variáveis podem vir de ~/.config/rhcsa-ai-review/env
+(KEY=VALUE; o ambiente do processo tem prioridade). Ver README.md neste diretório.
 Cada pedido e resposta ficam em ~/.local/share/rhcsa-ai-review/ por 30 dias.
 """
 import json
@@ -17,8 +20,25 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+CONFIG = Path.home() / '.config/rhcsa-ai-review/env'
+
+
+def load_config(path=CONFIG):
+    """KEY=VALUE de RHCSA_REVIEW_* no arquivo, sem sobrescrever o ambiente."""
+    try:
+        lines = path.read_text(encoding='utf-8').splitlines()
+    except OSError:
+        return
+    for line in lines:
+        key, sep, value = line.strip().partition('=')
+        if sep and key.startswith('RHCSA_REVIEW_') and not key.startswith('#'):
+            os.environ.setdefault(key, value.strip().strip('"\''))
+
+
+load_config()
+# None = Claude não instalado: a reserva (se houver) responde sozinha.
 CLAUDE = os.environ.get('RHCSA_REVIEW_CLAUDE') or shutil.which(
-    'claude', path=f"{Path.home() / '.local/bin'}:/usr/local/bin:/usr/bin") or 'claude'
+    'claude', path=f"{Path.home() / '.local/bin'}:/usr/local/bin:/usr/bin")
 MODEL = os.environ.get('RHCSA_REVIEW_MODEL', 'sonnet')
 FALLBACK = os.environ.get('RHCSA_REVIEW_FALLBACK', '')
 # Claude + reserva cabem no timeout padrão de 780 s do ssh em ai_review.py (workstation).
@@ -96,15 +116,19 @@ def main():
 
     WORKDIR.mkdir(mode=0o700, exist_ok=True)
     prompt = build_prompt(payload).encode()
-    review, claude_error = run_reviewer(
-        [CLAUDE, '-p', '--model', MODEL, '--tools', '', '--setting-sources', '',
-         '--strict-mcp-config', '--no-session-persistence', '--output-format', 'text',
-         '--system-prompt', SYSTEM], prompt, TIMEOUT_S, 'claude')
+    if CLAUDE:
+        review, claude_error = run_reviewer(
+            [CLAUDE, '-p', '--model', MODEL, '--tools', '', '--setting-sources', '',
+             '--strict-mcp-config', '--no-session-persistence', '--output-format', 'text',
+             '--system-prompt', SYSTEM], prompt, TIMEOUT_S, 'claude')
+    else:
+        review, claude_error = None, 'claude não instalado'
     fallback_error = None
     if claude_error and FALLBACK:
+        fallback_env = {k: v for k, v in os.environ.items() if k.startswith('RHCSA_REVIEW_FALLBACK_')}
         review, fallback_error = run_reviewer([FALLBACK], prompt, FALLBACK_TIMEOUT_S, 'reserva',
-                                              RHCSA_REVIEW_SYSTEM=SYSTEM)
-        if review:
+                                              RHCSA_REVIEW_SYSTEM=SYSTEM, **fallback_env)
+        if review and CLAUDE:
             review = (f'> Revisão feita pelo revisor de **reserva**: o Claude falhou — '
                       f'{claude_error}\n\n{review}')
 

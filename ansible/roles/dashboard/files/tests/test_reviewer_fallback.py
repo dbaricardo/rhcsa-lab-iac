@@ -33,6 +33,9 @@ class ReviewerFallbackTest(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.archive = root / 'archive'
+        patcher = mock.patch.object(reviewer, 'CLAUDE', '/usr/bin/claude')
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def review(self, *results):
         stdin = mock.Mock(buffer=io.BytesIO(PAYLOAD))
@@ -99,6 +102,59 @@ class ReviewerFallbackTest(unittest.TestCase):
         self.assertIn('claude falhou (1): x', stderr.getvalue())
         self.assertIn('reserva não executou: sem venv', stderr.getvalue())
         self.assertEqual(len(list(self.archive.glob('*.md'))), 1)
+
+    def without_claude(self):
+        patcher = mock.patch.object(reviewer, 'CLAUDE', None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_without_claude_fallback_is_the_main_reviewer(self):
+        self.with_fallback()
+        self.without_claude()
+        rc, out, calls = self.review(done(0, b'## Veredito\nOk'))
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, '## Veredito\nOk\n')  # sem o aviso de "reserva"
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0].args[0], ['/opt/reviewer/fallback'])
+
+    def test_without_claude_and_without_fallback_fails(self):
+        self.with_fallback('')
+        self.without_claude()
+        stderr = io.StringIO()
+        stdin = mock.Mock(buffer=io.BytesIO(PAYLOAD))
+        with mock.patch.object(reviewer.subprocess, 'run') as run, \
+                mock.patch.object(reviewer.sys, 'stdin', stdin), \
+                mock.patch.object(reviewer.sys, 'stderr', stderr):
+            rc = reviewer.main()
+        self.assertEqual(rc, 4)
+        run.assert_not_called()
+        self.assertIn('claude não instalado', stderr.getvalue())
+
+    def test_fallback_receives_only_its_own_variables(self):
+        self.with_fallback()
+        env = {'RHCSA_REVIEW_FALLBACK_URL': 'http://llm:1234/v1',
+               'RHCSA_REVIEW_FALLBACK_MODEL': 'qwen', 'SEGREDO_QUALQUER': 'x'}
+        with mock.patch.dict(reviewer.os.environ, env):
+            _, _, calls = self.review(done(1, err=b'x'), done(0, b'ok'))
+        fb_env = calls[1].kwargs['env']
+        self.assertEqual(fb_env['RHCSA_REVIEW_FALLBACK_URL'], 'http://llm:1234/v1')
+        self.assertEqual(fb_env['RHCSA_REVIEW_FALLBACK_MODEL'], 'qwen')
+        self.assertNotIn('SEGREDO_QUALQUER', fb_env)
+
+    def test_config_file_fills_only_missing_review_variables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            conf = Path(tmp) / 'env'
+            conf.write_text('# comentario\nRHCSA_REVIEW_MODEL=opus\n'
+                            'RHCSA_REVIEW_FALLBACK_URL="http://x/v1"\nPATH=/tmp/mal\n'
+                            'RHCSA_REVIEW_FALLBACK_MODEL=do-arquivo\n', encoding='utf-8')
+            with mock.patch.dict(reviewer.os.environ,
+                                 {'RHCSA_REVIEW_FALLBACK_MODEL': 'do-ambiente'}, clear=True):
+                reviewer.load_config(conf)
+                self.assertEqual(reviewer.os.environ['RHCSA_REVIEW_MODEL'], 'opus')
+                self.assertEqual(reviewer.os.environ['RHCSA_REVIEW_FALLBACK_URL'], 'http://x/v1')
+                self.assertEqual(reviewer.os.environ['RHCSA_REVIEW_FALLBACK_MODEL'], 'do-ambiente')
+                self.assertNotIn('PATH', reviewer.os.environ)
+            reviewer.load_config(Path(tmp) / 'nao-existe')  # arquivo ausente: sem erro
 
     def test_reviewer_has_nothing_specific_to_the_homelab(self):
         source = SCRIPT.read_text(encoding='utf-8')

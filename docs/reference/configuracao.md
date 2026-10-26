@@ -18,8 +18,12 @@ Copiado de `.env.example`. Nunca é commitado (`.gitignore`).
 | `FLATPAK_MIRROR_ENABLED` | não | `true` | Monta o OSTree `myrepo` do Flathub no deploy (~1,6 GB, exige internet). `false` = `examsim-flatpak`/`dyn-flatpak-*` não funcionam |
 | `RHCSA_RECORDING_ENABLED` | não | `false` | Grava os terminais das 3 VMs em `/var/log/rhcsa-rec` (14 dias) |
 | `AI_REVIEW_ENABLED` | não | `false` | Revisão por IA no `lab finish`; exige gravação ligada e `AI_REVIEWER` |
-| `AI_REVIEWER` | se IA ligada | vazio | `usuario@host` do revisor (ver `contrib/ai-reviewer/README.md`) |
+| `AI_REVIEWER` | se IA ligada | vazio | `usuario@host` do revisor. `make ai-reviewer` preenche com `$USER@<gateway>` (ver [Ativar a revisão por IA](../how-to/ativar-revisao-ia.md)) |
 | `AI_REVIEW_TIMEOUT` | não | `780` | Tempo máximo da revisão, em segundos |
+| `AI_REVIEW_MODEL` | não | vazio (`sonnet`) | Modelo do Claude no revisor (`make ai-reviewer` grava como `RHCSA_REVIEW_MODEL`) |
+| `AI_REVIEW_OPENAI_URL` | sem Claude | vazio | Base de uma API compatível com OpenAI (ex.: `http://localhost:1234/v1`); com Claude, vira a reserva |
+| `AI_REVIEW_OPENAI_MODEL` | com a URL | vazio | Nome do modelo nesse servidor |
+| `AI_REVIEW_OPENAI_API_KEY` | não | vazio | Chave da API, se o servidor pedir (fica em `~/.config/rhcsa-ai-review/env`, modo 600) |
 
 Sem `RHSM_*`, `make provision` só passa se as VMs já estiverem registradas
 à mão; `make deploy-offline` ignora essas variáveis.

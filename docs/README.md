@@ -25,6 +25,8 @@ Organizada segundo o [Diátaxis](https://diataxis.fr): cada documento tem um
 - [Operar o lab no dia a dia](how-to/operar-o-lab.md) — SSH, reaplicar o
   Ansible, mudar a topologia, reconstruir a imagem, destruir e recriar.
 - [Testar sem subscription (modo offline)](how-to/deploy-offline.md)
+- [Ativar a revisão por IA](how-to/ativar-revisao-ia.md) — `make ai-reviewer`
+  com Claude Code ou um LLM local/API compatível com OpenAI.
 - [Resolver problemas comuns](how-to/resolver-problemas.md) — sintoma → o
   que fazer.
 - [Criar um exercício novo](how-to/criar-exercicio.md)

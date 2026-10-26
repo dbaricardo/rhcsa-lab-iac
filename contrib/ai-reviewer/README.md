@@ -2,7 +2,13 @@
 
 Opcional. Só é usado com `AI_REVIEW_ENABLED=true` no `.env`. Esta parte roda num
 host **fora do lab** que tenha o [Claude Code CLI](https://docs.claude.com/en/docs/claude-code)
-instalado e já autenticado (`claude -p "oi"` precisa funcionar sem pedir nada).
+instalado e já autenticado (`claude -p "oi"` precisa funcionar sem pedir nada)
+e/ou acesso a uma API compatível com OpenAI (`rhcsa-ai-review-openai`).
+
+> **Caminho rápido:** para usar o próprio host do libvirt como revisor, rode
+> `make ai-reviewer` — ele faz tudo abaixo sozinho. Ver
+> [docs/how-to/ativar-revisao-ia.md](../../docs/how-to/ativar-revisao-ia.md).
+> Este README é o passo a passo manual, para um revisor em outra máquina.
 
 Como funciona: no `lab finish`, a workstation abre um SSH com uma chave dedicada
 e envia o JSON da tentativa no stdin. No revisor, essa chave só consegue rodar
@@ -33,10 +39,13 @@ devolve Markdown no stdout.
 |---|---|---|
 | `RHCSA_REVIEW_CLAUDE` | `claude` no PATH ou em `~/.local/bin` | caminho do CLI |
 | `RHCSA_REVIEW_MODEL` | `sonnet` | modelo passado a `--model` |
-| `RHCSA_REVIEW_FALLBACK` | vazio | executável de reserva: recebe o prompt no stdin e o prompt de sistema em `RHCSA_REVIEW_SYSTEM` |
+| `RHCSA_REVIEW_FALLBACK` | vazio | executável de reserva: recebe o prompt no stdin e o prompt de sistema em `RHCSA_REVIEW_SYSTEM`. Sem Claude instalado, vira o revisor principal |
+| `RHCSA_REVIEW_FALLBACK_URL`, `_MODEL`, `_API_KEY` | vazio | usados por `rhcsa-ai-review-openai` (API compatível com OpenAI); repassados à reserva |
 
-O forced command roda com o ambiente do login SSH. Para definir essas variáveis,
-use `command="env RHCSA_REVIEW_MODEL=... /caminho/rhcsa-ai-review"`.
+As variáveis podem ficar em `~/.config/rhcsa-ai-review/env` (`CHAVE=valor`, uma por
+linha, modo 600) — é onde o `make ai-reviewer` as grava. O ambiente do processo tem
+prioridade sobre o arquivo. Para LLM local, copie também `rhcsa-ai-review-openai`
+para `~/.local/bin` e use `RHCSA_REVIEW_FALLBACK=<caminho absoluto dele>`.
 
 ## Teste rápido
 
