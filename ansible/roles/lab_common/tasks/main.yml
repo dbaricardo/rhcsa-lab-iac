@@ -1,44 +1,63 @@
 ---
-# Aplicado a servera e serverb (grupo lab_hosts): instala o dispatcher local
-# (lab-remote), o helper de disco (lab-common.sh) e só os scripts dos
-# exercícios cujo `hosts` (em labs/*/meta.json, agregado em labs/catalog.json
-# por scripts/build-catalog.py) inclui este host.
+# Instala em cada host (servera, serverb, workstation) o layout dos labs
+# legados examsim-* IGUAL ao das VMs do homelab, a partir da árvore espelhada
+# labs/hosts/<host>/ (ver labs/README.md):
+#   servera/serverb: /usr/local/bin/lab (dispatcher local), lab-common.sh,
+#                    /usr/local/lib/{lab-scripts,lab-grade,lab-finish}/<id>.sh
+#   servera:         /usr/local/lib/lab-network-reset.sh
+#   serverb:         /usr/local/lib/lab-full/examsim-full-serverb.sh
+#   workstation:     só o lado servidor NFS de examsim-autofs-remoteuser2
+#                    (o /usr/local/bin/lab, rhcsa-lab-original e lab-full/ da
+#                    workstation são do role `workstation`).
 
-- name: Instalar lab-common.sh (helpers de disco -- resolve_disco/disco_do_so)
-  ansible.builtin.copy:
-    src: lab-common.sh
-    dest: /usr/local/lib/lab-common.sh
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Instalar dispatcher local lab-remote
-  ansible.builtin.copy:
-    src: lab-remote
-    dest: /usr/local/bin/lab-remote
-    owner: root
-    group: root
-    mode: "0755"
-
-- name: Carregar catálogo de exercícios (gerado por scripts/build-catalog.py)
-  ansible.builtin.set_fact:
-    lab_catalog_tasks: "{{ lookup('file', playbook_dir + '/../labs/catalog.json') | from_json }}"
-
-- name: Garantir diretório base dos scripts de lab
+- name: Remover artefatos do layout antigo do iac (lab-remote + labs/<id>/<ação>.sh)
   ansible.builtin.file:
-    path: /usr/local/lib/lab-scripts
+    path: /usr/local/bin/lab-remote
+    state: absent
+
+- name: Resolver o caminho absoluto da árvore espelhada
+  ansible.builtin.set_fact:
+    lab_common_root: "{{ lab_common_tree | realpath }}"
+
+- name: Listar arquivos da árvore espelhada deste host
+  ansible.builtin.find:
+    paths: "{{ lab_common_root }}"
+    recurse: true
+    file_type: file
+    hidden: false
+  delegate_to: localhost
+  become: false
+  register: lab_common_files
+
+- name: Falhar cedo se não houver árvore para este host
+  ansible.builtin.assert:
+    that: lab_common_files.matched | int > 0
+    fail_msg: "labs/hosts/{{ inventory_hostname }}/ vazio ou inexistente ({{ lab_common_root }})"
+
+- name: Criar diretórios dos labs (0755 root:root, como no homelab)
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
+  loop: >-
+    {{ ['/usr/local/lib/lab-scripts', '/usr/local/lib/lab-grade', '/usr/local/lib/lab-finish']
+       + (['/usr/local/lib/lab-full'] if inventory_hostname in ['servera', 'serverb'] else []) }}
 
-- name: Instalar exercícios atribuídos a este host
+- name: Instalar scripts e helpers do homelab
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../labs/{{ item.id }}/"
-    dest: "/usr/local/lib/lab-scripts/{{ item.id }}/"
-    owner: root
-    group: root
-    mode: "0755"
-  loop: "{{ lab_catalog_tasks | selectattr('hosts', 'contains', inventory_hostname) | list }}"
+    src: "{{ item.path }}"
+    dest: "{{ item.path | replace(lab_common_root, '') }}"
+    owner: "{{ ((item.path | replace(lab_common_root, '')) in lab_common_student_owned) | ternary(lab_student_user, 'root') }}"
+    group: "{{ ((item.path | replace(lab_common_root, '')) in lab_common_student_owned) | ternary(lab_student_user, 'root') }}"
+    mode: >-
+      {{ lab_common_modes[item.path | replace(lab_common_root, '')]
+         | default(lab_common_default_mode) }}
+  loop: "{{ lab_common_files.files | sort(attribute='path') }}"
   loop_control:
-    label: "{{ item.id }}"
+    label: "{{ item.path | replace(lab_common_root, '') }}"
+
+- name: Restaurar contexto SELinux padrão dos arquivos instalados
+  ansible.builtin.command: restorecon -R /usr/local/bin /usr/local/lib
+  changed_when: false

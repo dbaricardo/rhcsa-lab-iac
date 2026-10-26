@@ -1,0 +1,3 @@
+---
+# `firewall-cmd --list-all` da servera do homelab (2026-10-16).
+servera_firewalld_services: [cockpit, dhcpv6-client, nfs, ssh]

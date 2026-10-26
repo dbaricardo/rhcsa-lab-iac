@@ -14,18 +14,23 @@ pessoalmente ao autor.
 tela ou qualquer material licenciado da Red Hat Training — está incluído,
 copiado ou parafraseado neste repositório.**
 
-## O que está aqui
+## O que está aqui e de onde veio
 
-Os exercícios em `labs/` são escritos do zero pelo autor, cobrindo os mesmos
-domínios de conhecimento **públicos** do blueprint oficial do exame EX200,
-disponível em <https://www.redhat.com/en/services/certification/rhcsa>.
-Qualquer semelhança de tema (por exemplo, "gerenciar usuários e grupos" ou
-"configurar NFS/autofs") é esperada e inevitável, já que o blueprint do
-exame é público — a redação dos cenários, instruções e critérios de
-avaliação é original.
+Os exercícios são os mesmos do lab RHCSA que o autor usa no homelab, em
+três origens:
 
-Para mais contexto sobre essa distinção, ver
-[docs/copyright-notice.md](docs/copyright-notice.md).
+| Conteúdo | Origem | Licença |
+|---|---|---|
+| 24 questões `examsim-*` e a prova completa `examsim-full` (`labs/hosts/`, `ansible/roles/workstation/files/lab-full/`) | Enunciados adaptados do simulado público em vídeo "RHCSA v10" (YouTube, `kBsMuA-DA9E`, itens 2–20 e 22) mais 4 questões do autor (Q01, Q21, Q23, Q24); scripts de preparo, correção e limpeza escritos do zero | deste repositório |
+| `examsim-treino-storage` | escrito do zero pelo autor | deste repositório |
+| 142 tarefas portadas do exame dinâmico (`labs/dyn/tasks/`, enunciados em `labs/dyn/pool.json`) | Portadas para bash a partir do [rhcsa-simulator](https://github.com/TroggoMan/rhcsa-simulator), de Austin Nicely; correção reescrita (comportamento, não texto) | MIT — ver [`labs/dyn/LICENSE-rhcsa-simulator`](labs/dyn/LICENSE-rhcsa-simulator) |
+
+Todos cobrem os domínios **públicos** do blueprint oficial do EX200
+(<https://www.redhat.com/en/services/certification/rhcsa>). O motor de
+sorteio, o dashboard, o dispatcher `lab` e a infraestrutura são do autor.
+
+Para mais contexto, ver
+[docs/explanation/direitos-autorais.md](docs/explanation/direitos-autorais.md).
 
 ## Uso da marca
 

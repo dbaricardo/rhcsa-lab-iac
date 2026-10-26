@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# Nome fixo da NIC pelo MAC (machines.yaml), para ter {{ item.name }} como nas
+# VMs do homelab (Proxmox), em vez do nome previsível do libvirt (enpXsY).
+[Match]
+MACAddress={{ item.mac | lower }}
+
+[Link]
+Name={{ item.name }}

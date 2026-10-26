@@ -1,0 +1,39 @@
+---
+# Só CONFIRMA os discos extra anexados pelo Terraform (machines.yaml ->
+# <host>.extra_disks) -- nunca particiona/formata aqui. Ficam brutos de
+# propósito: os exercícios de LVM/storage praticam pvcreate/mkfs do zero.
+# Conferência por TAMANHO EXATO em bytes (os exercícios e o lab-common.sh
+# acham os discos assim: 1073741824/6442450944 na serverb, 2/3 GiB virtio em
+# servera/serverb), nunca pelo nome sdX/vdX (já inverteu entre boots).
+# Uso: include_role common, tasks_from extra-disks (roles servera/serverb).
+
+- name: Tamanhos esperados dos discos extra (bytes, de machines.yaml)
+  ansible.builtin.set_fact:
+    common_expected_disk_sizes: >-
+      {{ lab_spec.machines[inventory_hostname].extra_disks | default([])
+         | map(attribute='size_gb') | map('int') | list }}
+
+- name: Listar discos (exceto o do SO) com tamanho em bytes via lsblk
+  ansible.builtin.shell: |
+    set -euo pipefail
+    disco_so="$(lsblk -nsrpo NAME "$(findmnt -no SOURCE /)" | tail -n1)"
+    lsblk -dnrbo NAME,TYPE,SIZE | awk -v so="$(basename "$disco_so")" \
+      '$2=="disk" && $1!=so {print $1, $3}'
+  args:
+    executable: /bin/bash
+  changed_when: false
+  register: common_raw_disks
+
+- name: Conferir cada disco extra pelo tamanho exato
+  ansible.builtin.assert:
+    that:
+      - >-
+        (common_raw_disks.stdout_lines | map('split') | map('last') | select('equalto', (item | int * 1073741824) | string) | list | length)
+        >= (common_expected_disk_sizes | select('equalto', item) | list | length)
+    fail_msg: >-
+      {{ inventory_hostname }}: esperava disco(s) de {{ item }} GiB
+      ({{ item | int * 1073741824 }} bytes) definidos em machines.yaml, mas
+      lsblk mostrou: {{ common_raw_disks.stdout_lines }}. Confira
+      `extra_disks` em machines.yaml e terraform/main.tf.
+    quiet: true
+  loop: "{{ common_expected_disk_sizes | unique }}"

@@ -16,83 +16,15 @@
     mode: "0440"
     validate: "visudo -cf %s"
 
-# Modo TESTE/aceitação, sem subscription real (ver docs/troubleshooting.md,
-# seção "Modo offline via ISO", e scripts/offline-repo.sh): quando
-# lab_offline_repo_url estiver preenchida, aponta BaseOS/AppStream para o
-# HTTP servido a partir da DVD ISO montada no host, em vez dos repos da Red
-# Hat CDN -- não substitui a subscription real (sem updates/erratas), só
-# existe para validar o resto do provisionamento (pacotes/roles/exercícios)
-# sem depender de uma conta Red Hat.
-- name: "[modo offline] Configurar repo BaseOS a partir da ISO"
-  ansible.builtin.yum_repository:
-    name: lab-offline-baseos
-    description: "RHCSA lab (offline/teste) - BaseOS"
-    baseurl: "{{ lab_offline_repo_url }}/BaseOS"
-    gpgcheck: true
-    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-  when: lab_offline_repo_url | length > 0
+- name: Repositórios do deploy (subscription ou ISO offline) + chave GPG
+  ansible.builtin.include_tasks: repos.yml
 
-- name: "[modo offline] Configurar repo AppStream a partir da ISO"
-  ansible.builtin.yum_repository:
-    name: lab-offline-appstream
-    description: "RHCSA lab (offline/teste) - AppStream"
-    baseurl: "{{ lab_offline_repo_url }}/AppStream"
-    gpgcheck: true
-    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-  when: lab_offline_repo_url | length > 0
+# Nomes ens18/ens19 + perfil NM "ens18" estático (igual ao homelab). Pode
+# reiniciar a VM uma vez (troca de nome da interface de gerência).
+- name: Rede igual ao homelab (ens18/ens19)
+  ansible.builtin.include_tasks: network.yml
 
-# Subscription: nunca embutida na imagem golden (as 3 VMs clonadas
-# compartilhariam o mesmo consumer ID na Red Hat, o que já causou conflito
-# real). Cada VM se registra aqui, individualmente, depois de clonada -- e
-# por isso ganha identidade própria -- usando RHSM_ORG_ID/RHSM_ACTIVATION_KEY
-# do .env. Sem essas variáveis, assume que você registrou à mão; se não
-# registrou, falha cedo, antes de qualquer `dnf install`, em vez de um erro
-# genérico de "repositório vazio" bem mais adiante. Pulado inteiramente no
-# modo offline acima, que é sua forma explícita de dizer "sem subscription de
-# propósito".
-- name: Verificar se {{ inventory_hostname }} já está registrado na subscription
-  ansible.builtin.command: subscription-manager identity
-  register: lab_subscription_identity
-  changed_when: false
-  failed_when: false
-  when: lab_offline_repo_url | length == 0
-
-- name: Registrar {{ inventory_hostname }} na subscription (RHSM_ORG_ID/RHSM_ACTIVATION_KEY do .env)
-  ansible.builtin.command:
-    argv:
-      - subscription-manager
-      - register
-      - "--org={{ lab_rhsm_org_id }}"
-      - "--activationkey={{ lab_rhsm_activation_key }}"
-  no_log: true
-  register: lab_subscription_register
-  changed_when: lab_subscription_register.rc == 0
-  when:
-    - lab_offline_repo_url | length == 0
-    - lab_subscription_identity.rc != 0
-    - lab_rhsm_org_id | length > 0
-    - lab_rhsm_activation_key | length > 0
-
-- name: Falhar cedo se {{ inventory_hostname }} não estiver registrado na subscription
-  ansible.builtin.assert:
-    that:
-      - lab_subscription_identity.rc == 0 or (lab_subscription_register.rc | default(1)) == 0
-    fail_msg: >-
-      {{ inventory_hostname }} não está registrado na Red Hat subscription.
-      Preencha RHSM_ORG_ID e RHSM_ACTIVATION_KEY no .env e rode
-      'make provision' de novo, ou registre à mão
-      ('make ssh-{{ inventory_hostname }}', depois
-      sudo subscription-manager register --org=<ORG_ID>
-      --activationkey=<ACTIVATION_KEY>). Para testar sem conta Red Hat, use
-      'make deploy-offline'.
-    success_msg: "{{ inventory_hostname }}: subscription registrada, seguindo."
-  when: lab_offline_repo_url | length == 0
-
-- name: Ler topologia de machines.yaml (para /etc/hosts)
-  ansible.builtin.set_fact:
-    lab_machines: "{{ (lookup('file', playbook_dir + '/../machines.yaml') | from_yaml).machines }}"
-
-- name: Popular /etc/hosts com os 3 hosts do lab
+- name: Popular /etc/hosts igual ao homelab (traduzido)
   ansible.builtin.template:
     src: hosts.j2
     dest: /etc/hosts
@@ -100,35 +32,83 @@
     group: root
     mode: "0644"
 
-# Bug conhecido (ver docs/troubleshooting.md): RHEL10.0/10.x assina pacotes
-# com uma 4a chave de release pos-quantica ausente por padrao. O kickstart do
-# imagem golden já importa isso, mas repetir aqui protege quem clonar/usar um
-# imagem RHEL10 genérica própria (fora do fluxo scripts/build-image.sh deste repo).
-- name: Importar 4a chave de release do RHEL10 (bug conhecido de GPG)
-  ansible.builtin.rpm_key:
-    key: https://security.access.redhat.com/data/6afedf8f.txt
-    state: present
-  register: gpg_key_import
-  failed_when: false
+# Paridade de pacotes com as VMs do homelab (`rpm -qa` de 2026-10-16).
+- name: Pacotes iguais aos do homelab
+  ansible.builtin.include_tasks: packages.yml
 
-- name: Avisar se a 4a chave GPG não pôde ser importada (sem rede de saída?)
-  ansible.builtin.debug:
-    msg: >-
-      Não foi possível importar a 4a chave de release do RHEL10 automaticamente
-      (sem rede de saída no domínio libvirt?). Se `dnf install` falhar com
-      "SIGNATURE: NOT OK", ver docs/troubleshooting.md.
-  when: gpg_key_import is failed
-
-- name: Instalar chrony
-  ansible.builtin.dnf:
-    name: chrony
-    state: present
+# A imagem golden nasce com root travado (rootpw --lock). Com
+# LAB_ROOT_PASSWORD no .env, root ganha senha como no homelab (login de
+# console nos exercícios). Idempotente: só troca se o hash atual não bate.
+- name: Senha de root do lab (LAB_ROOT_PASSWORD, opcional)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    atual=$(getent shadow root | cut -d: -f2)
+    case "$atual" in
+      '$6$'*)
+        salt=$(cut -d'$' -f3 <<<"$atual")
+        [ "$(openssl passwd -6 -salt "$salt" -stdin <<<"$LAB_PW")" = "$atual" ] && exit 0 ;;
+    esac
+    printf 'root:%s\n' "$LAB_PW" | chpasswd
+    echo MUDOU
+  args:
+    executable: /bin/bash
+  environment:
+    LAB_PW: "{{ lab_root_password }}"
+  register: common_root_pw
+  changed_when: "'MUDOU' in common_root_pw.stdout"
+  no_log: true
+  when: lab_root_password | length > 0
 
 - name: Habilitar chronyd
   ansible.builtin.systemd:
     name: chronyd
     enabled: true
     state: started
+
+- name: PermitRootLogin yes (igual ao homelab; root entra só por chave)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/01-permitrootlogin.conf
+    content: |
+      # This file has been generated by the Anaconda Installer.
+      # Allow root to log in using ssh. Remove this file to opt-out.
+      PermitRootLogin yes
+    owner: root
+    group: root
+    mode: "0600"
+  notify: recarregar sshd
+
+# Remote "flathub" de sistema, como em servera e workstation do homelab
+# (serverb não tem flatpak). Adicionado a partir do .flatpakrepo oficial
+# versionado no role: não precisa de rede no deploy.
+- name: Remote flathub de sistema (hosts com flatpak no homelab)
+  when: inventory_hostname in common_flathub_hosts
+  block:
+    - name: Diretório /usr/local/share/rhcsa-lab
+      ansible.builtin.file:
+        path: /usr/local/share/rhcsa-lab
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Copiar flathub.flatpakrepo
+      ansible.builtin.copy:
+        src: flathub.flatpakrepo
+        dest: /usr/local/share/rhcsa-lab/flathub.flatpakrepo
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Listar remotes flatpak de sistema
+      ansible.builtin.command: flatpak remotes --system --columns=name
+      register: common_flatpak_remotes
+      changed_when: false
+
+    - name: Adicionar remote flathub de sistema
+      ansible.builtin.command:
+        argv: [flatpak, remote-add, --system, --if-not-exists, flathub, /usr/local/share/rhcsa-lab/flathub.flatpakrepo]
+      changed_when: true
+      when: "'flathub' not in common_flatpak_remotes.stdout_lines"
 
 - name: Garantir firewalld ativo
   ansible.builtin.systemd:
@@ -141,7 +121,7 @@
     policy: targeted
     state: enforcing
 
-# Bug conhecido (ver docs/troubleshooting.md): clonar uma VM pode deixar
+# Bug conhecido (ver docs/explanation/problemas-conhecidos.md): clonar uma VM pode deixar
 # /etc/machine-id ou perfis de rede com contexto SELinux unlabeled_t, o que
 # derruba journald -> dbus -> NetworkManager em cascata sem AVC visível em
 # ausearch (só aparece em dmesg). O kickstart e image/finalize.sh já mitigam,

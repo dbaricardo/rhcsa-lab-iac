@@ -1,0 +1,259 @@
+---
+# Roda na workstation (classroom_host), ANTES do lockdown de repositórios:
+# precisa de dnf (nginx & cia.), da ISO servida pelo host e do Flathub.
+
+- name: Pacotes do classroom (nginx é o único extra frente à workstation do homelab)
+  ansible.builtin.dnf:
+    name: "{{ classroom_packages }}"
+    state: present
+
+# ---------------------------------------------------------------- nginx ---
+- name: Porta {{ classroom_port }}/tcp como http_port_t no SELinux
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if semanage port -l | awk '$1=="http_port_t"' | grep -qw '{{ classroom_port }}'; then
+      echo OK; exit 0
+    fi
+    semanage port -a -t http_port_t -p tcp {{ classroom_port }} 2>/dev/null \
+      || semanage port -m -t http_port_t -p tcp {{ classroom_port }}
+    echo MUDOU
+  args:
+    executable: /bin/bash
+  register: classroom_seport
+  changed_when: "'MUDOU' in classroom_seport.stdout"
+
+- name: Diretórios servidos (mesma árvore do homelab)
+  ansible.builtin.file:
+    path: "{{ classroom_webroot }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - rpm
+    - rhel10.0/x86_64/dvd/BaseOS
+    - rhel10.0/x86_64/dvd/AppStream
+    - timer-repo
+    - flatpak/myrepo
+
+- name: vhosts do classroom
+  ansible.builtin.template:
+    src: rhcsa-lab-classroom.conf.j2
+    dest: /etc/nginx/conf.d/rhcsa-lab-classroom.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reiniciar nginx
+
+- name: Validar a configuração do nginx
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Firewall da workstation-classroom (HTTP {{ classroom_port }} e NTP)
+  ansible.posix.firewalld:
+    port: "{{ item.port | default(omit) }}"
+    service: "{{ item.service | default(omit) }}"
+    zone: public
+    permanent: true
+    immediate: true
+    state: enabled
+  loop:
+    - port: "{{ classroom_port }}/tcp"
+    - service: ntp
+
+- name: Habilitar e iniciar nginx
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+    state: started
+
+# ---------------------------------------------- mirror BaseOS/AppStream ---
+- name: Diretório /usr/local/share/rhcsa-lab
+  ansible.builtin.file:
+    path: /usr/local/share/rhcsa-lab
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Scripts do classroom
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/libexec/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - classroom-rpm-mirror.sh
+    - classroom-flatpak-mirror.sh
+
+- name: Listas de nomes do mirror parcial (iguais ao homelab)
+  ansible.builtin.copy:
+    content: "{{ item.names | join('\n') }}\n"
+    dest: "/usr/local/share/rhcsa-lab/classroom-{{ item.repo }}.txt"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { repo: BaseOS, names: "{{ classroom_mirror_baseos }}" }
+    - { repo: AppStream, names: "{{ classroom_mirror_appstream }}" }
+  loop_control:
+    label: "{{ item.repo }}"
+
+- name: Mirror parcial BaseOS/AppStream a partir da ISO
+  ansible.builtin.command:
+    argv:
+      - /usr/local/libexec/classroom-rpm-mirror.sh
+      - "{{ classroom_iso_url }}"
+      - "{{ classroom_webroot }}/rhel10.0/x86_64/dvd"
+      - /usr/local/share/rhcsa-lab/classroom-BaseOS.txt
+      - /usr/local/share/rhcsa-lab/classroom-AppStream.txt
+  register: classroom_rpm_mirror
+  changed_when: "'MUDOU' in classroom_rpm_mirror.stdout"
+  when: classroom_iso_url | length > 0
+
+- name: Avisar nomes do homelab que a ISO não tem
+  ansible.builtin.debug:
+    msg: "{{ classroom_rpm_mirror.stdout_lines | select('match', '^AUSENTE') | list }}"
+  when:
+    - classroom_iso_url | length > 0
+    - classroom_rpm_mirror.stdout is search('AUSENTE')
+
+- name: Avisar que o mirror de pacotes foi pulado
+  ansible.builtin.debug:
+    msg: >-
+      lab_iso_url vazia: mirror BaseOS/AppStream do classroom NÃO foi montado
+      (examsim-repo-node1/2, examsim-tuned-servera e dyn-repo-* vão falhar).
+      Rode via `make provision`, que serve a ISO do host e passa a URL.
+  when: classroom_iso_url | length == 0
+
+# ------------------------------------------------- /timer-repo (logger) ---
+- name: Diretório de build do stub logger
+  ansible.builtin.file:
+    path: /var/tmp/rhcsa-lab-rpmbuild/SPECS
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Spec do stub logger
+  ansible.builtin.copy:
+    src: logger.spec
+    dest: /var/tmp/rhcsa-lab-rpmbuild/SPECS/logger.spec
+    owner: root
+    group: root
+    mode: "0644"
+  register: classroom_logger_spec
+
+- name: Estado atual do /timer-repo
+  ansible.builtin.stat:
+    path: "{{ classroom_webroot }}/timer-repo/{{ item }}"
+  loop: [logger-1.0-1.noarch.rpm, repodata/repomd.xml]
+  register: classroom_timer_stat
+
+- name: Construir logger-1.0-1.noarch.rpm com rpmbuild
+  ansible.builtin.command:
+    argv:
+      - rpmbuild
+      - --define
+      - _topdir /var/tmp/rhcsa-lab-rpmbuild
+      - -bb
+      - /var/tmp/rhcsa-lab-rpmbuild/SPECS/logger.spec
+  when: classroom_logger_spec is changed or not classroom_timer_stat.results[0].stat.exists
+  register: classroom_logger_build
+  changed_when: true
+
+- name: Publicar o RPM em /timer-repo
+  ansible.builtin.copy:
+    src: /var/tmp/rhcsa-lab-rpmbuild/RPMS/noarch/logger-1.0-1.noarch.rpm
+    dest: "{{ classroom_webroot }}/timer-repo/logger-1.0-1.noarch.rpm"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: classroom_logger_build is changed
+  register: classroom_logger_publish
+
+- name: Repodata do /timer-repo
+  ansible.builtin.command: createrepo_c --quiet {{ classroom_webroot }}/timer-repo
+  when: classroom_logger_publish is changed or not classroom_timer_stat.results[1].stat.exists
+  changed_when: true
+
+# ------------------------------------------------ OSTree myrepo (flatpak) ---
+- name: myrepo.flatpakrepo (Url exigida pelos grades)
+  ansible.builtin.copy:
+    src: myrepo.flatpakrepo
+    dest: "{{ classroom_flatpak_repo }}/myrepo.flatpakrepo"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Espelhar codium/Obsidian + runtimes do Flathub (demora; ~1,6 GB)
+  ansible.builtin.command:
+    argv: >-
+      {{ ['/usr/local/libexec/classroom-flatpak-mirror.sh', classroom_flatpak_repo, classroom_flatpak_upstream]
+         + classroom_flatpak_apps + ['--'] + classroom_flatpak_runtimes }}
+  async: "{{ classroom_flatpak_timeout }}"
+  poll: 30
+  register: classroom_flatpak_mirror
+  changed_when: "'MUDOU' in classroom_flatpak_mirror.stdout"
+  when: flatpak_mirror_enabled | bool
+
+- name: Avisar que o mirror flatpak foi desligado
+  ansible.builtin.debug:
+    msg: >-
+      flatpak_mirror_enabled=false: myrepo fica vazio; examsim-flatpak e
+      dyn-flatpak-* não vão funcionar.
+  when: not (flatpak_mirror_enabled | bool)
+
+- name: Contexto SELinux do conteúdo servido
+  ansible.builtin.command: restorecon -R {{ classroom_webroot }}
+  changed_when: false
+
+# --------------------------------------------------------------- NTP -------
+# servera/serverb continuam com o chrony padrão (o exercício examsim-ntp é
+# que aponta para classroom.example.com).
+- name: chrony servindo a rede do lab
+  ansible.builtin.lineinfile:
+    path: /etc/chrony.conf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: '^allow\s', line: "allow {{ lab_network_cidr }}" }
+    - { regexp: '^local\s', line: "local stratum 10" }
+  notify: Reiniciar chronyd
+
+- name: Aplicar handlers (nginx/chrony) antes dos testes
+  ansible.builtin.meta: flush_handlers
+
+# ----------------------------------------------------------- conferência ---
+- name: Conferir vhosts como o cliente vê (Host header, porta {{ classroom_port }})
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ classroom_port }}{{ item.path }}"
+    headers:
+      Host: "{{ item.host }}"
+    status_code: 200
+  loop:
+    - { host: content.example.com, path: /timer-repo/repodata/repomd.xml }
+    - { host: classroom.example.com, path: /timer-repo/ }
+    - { host: repo.example.com, path: / }
+    - { host: flatpak.lab.example.com, path: /myrepo.flatpakrepo }
+  loop_control:
+    label: "{{ item.host }}{{ item.path }}"
+
+- name: Conferir mirror BaseOS/AppStream
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ classroom_port }}/rhel10.0/x86_64/dvd/{{ item }}/repodata/repomd.xml"
+    headers:
+      Host: content.example.com
+    status_code: 200
+  loop: [BaseOS, AppStream]
+  when: classroom_iso_url | length > 0
+
+- name: Conferir summary do OSTree myrepo
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ classroom_port }}/summary"
+    headers:
+      Host: flatpak.lab.example.com
+    status_code: 200
+  when: flatpak_mirror_enabled | bool

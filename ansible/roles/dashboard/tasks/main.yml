@@ -1,7 +1,10 @@
 ---
-# Só roda no host definido em machines.yaml -> dashboard.host (workstation).
-# Porta o backend.py real de rhcsa-lab-dashboard/, generalizando IP/host e
-# origem do firewalld (sem nada hardcoded do homelab original).
+# Só roda na workstation. Mesmo layout do homelab:
+#   /opt/rhcsa-lab-dashboard/{backend.py,index.html,catalog.json,lab_wrapper.py}
+#     (ai_review.py vem do role ai_review, só quando ai_review_enabled)
+#   /var/lib/rhcsa-lab-dashboard/ (SQLite + dinamico/, dono do student)
+#   /etc/rhcsa-lab-dashboard.env (0600) + rhcsa-lab-dashboard.service
+# O wrapper /usr/local/bin/lab e o dispatcher original ficam no role workstation.
 
 - name: Criar diretório de instalação do dashboard (somente leitura pelo serviço)
   ansible.builtin.file:
@@ -11,29 +14,21 @@
     group: root
     mode: "0755"
 
-- name: Copiar backend.py (código original, sem alterações)
+- name: Copiar backend, interface, wrapper e catálogo (iguais ao homelab, IPs traduzidos)
   ansible.builtin.copy:
-    src: backend.py
-    dest: /opt/rhcsa-lab-dashboard/backend.py
+    src: "{{ item.src }}"
+    dest: "/opt/rhcsa-lab-dashboard/{{ item.dest }}"
     owner: root
     group: root
     mode: "0644"
-
-- name: Renderizar index.html (só generaliza IP/textos, lógica idêntica ao original)
-  ansible.builtin.template:
-    src: index.html.j2
-    dest: /opt/rhcsa-lab-dashboard/index.html
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Copiar catalog.json gerado por scripts/build-catalog.py
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../labs/catalog.json"
-    dest: /opt/rhcsa-lab-dashboard/catalog.json
-    owner: root
-    group: root
-    mode: "0644"
+  loop:
+    - { src: backend.py, dest: backend.py }
+    - { src: index.html, dest: index.html }
+    - { src: lab_wrapper.py, dest: lab_wrapper.py }
+    - { src: "{{ playbook_dir }}/../labs/catalog.json", dest: catalog.json }
+  loop_control:
+    label: "{{ item.dest }}"
+  notify: reiniciar dashboard
 
 - name: Criar diretório de dados do dashboard (SQLite, dono do student)
   ansible.builtin.file:
@@ -42,6 +37,24 @@
     owner: "{{ lab_student_user }}"
     group: "{{ lab_student_user }}"
     mode: "0700"
+
+- name: Criar diretório dos manifestos públicos do exame dinâmico
+  ansible.builtin.file:
+    path: /var/lib/rhcsa-lab-dashboard/dinamico
+    state: directory
+    owner: "{{ lab_student_user }}"
+    group: "{{ lab_student_user }}"
+    mode: "0755"
+
+- name: Gerar /etc/rhcsa-lab-dashboard.env (0600, senha de root do lab só para ocultar)
+  ansible.builtin.template:
+    src: rhcsa-lab-dashboard.env.j2
+    dest: /etc/rhcsa-lab-dashboard.env
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: reiniciar dashboard
 
 - name: Instalar unidade systemd do dashboard
   ansible.builtin.template:

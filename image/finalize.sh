@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Defesa em profundidade extra para o bug de SELinux unlabeled_t em VMs
-# clonadas (ver docs/troubleshooting.md) — o kickstart já zera
+# clonadas (ver docs/explanation/problemas-conhecidos.md) — o kickstart já zera
 # /etc/machine-id, isto garante que TODO /etc está com contexto correto
 # antes mesmo do primeiro boot de qualquer clone.
 restorecon -Rv /etc || true

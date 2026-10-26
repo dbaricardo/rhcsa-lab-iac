@@ -1,0 +1,69 @@
+---
+# Paridade de pacotes com as VMs do homelab: instala TODO nome de pacote que
+# existe na VM correspondente do homelab (files/homelab-rpms/<host>.txt,
+# extraído com rpm -qa em 2026-10-16) e ainda falta aqui. A imagem golden
+# nasce de @^minimal-environment; as VMs do homelab foram instaladas com o
+# ambiente padrão de servidor e acumularam pacotes dos exercícios (httpd,
+# autofs, flatpak na servera, sysstat na serverb...). Versões podem diferir
+# (homelab = CDN 10.x atualizado; aqui = o que a ISO/CDN do usuário tiver);
+# os exercícios só olham NOMES.
+#
+# --setopt=strict=0: nome que não existir nos repositórios do deploy é
+# pulado (e reportado abaixo) em vez de abortar tudo. A REMOÇÃO do que o
+# homelab não tem fica no play de lockdown (site.yml), com lista explícita.
+
+- name: Diretório /usr/local/share/rhcsa-lab
+  ansible.builtin.file:
+    path: /usr/local/share/rhcsa-lab
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Copiar a lista de pacotes do homelab para este host
+  ansible.builtin.copy:
+    src: "homelab-rpms/{{ inventory_hostname }}.txt"
+    dest: /usr/local/share/rhcsa-lab/homelab-rpms.txt
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Instalar os pacotes do homelab que faltam
+  ansible.builtin.shell: |
+    set -euo pipefail
+    lista=/usr/local/share/rhcsa-lab/homelab-rpms.txt
+    faltam=$(comm -23 <(grep -v '^#' "$lista" | sort -u) \
+                      <(rpm -qa --qf '%{NAME}\n' | sort -u))
+    [ -z "$faltam" ] && { echo "NADA A FAZER"; exit 0; }
+    # shellcheck disable=SC2086 # lista de nomes, um por palavra
+    dnf -y -q --setopt=strict=0 install $faltam
+    echo "INSTALADO"
+  args:
+    executable: /bin/bash
+  register: common_pkgs_install
+  changed_when: "'INSTALADO' in common_pkgs_install.stdout"
+
+- name: Listar nomes do homelab que não existem nos repositórios do deploy
+  ansible.builtin.shell: |
+    set -euo pipefail
+    comm -23 <(grep -v '^#' /usr/local/share/rhcsa-lab/homelab-rpms.txt | sort -u) \
+             <(rpm -qa --qf '%{NAME}\n' | sort -u)
+  args:
+    executable: /bin/bash
+  register: common_pkgs_missing
+  changed_when: false
+
+- name: Avisar pacotes do homelab indisponíveis (não bloqueia)
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}: {{ common_pkgs_missing.stdout_lines | length }}
+      pacote(s) do homelab não encontrados nos repositórios do deploy:
+      {{ common_pkgs_missing.stdout_lines | join(' ') }}
+  when: common_pkgs_missing.stdout_lines | length > 0
+
+# Os exercícios exigem estes nomes (A2/A3, conferido nos scripts examsim/dyn).
+# Falha cedo se algum ficou de fora, em vez de um grade errado na prova.
+- name: Conferir pacotes obrigatórios dos exercícios
+  ansible.builtin.command:
+    argv: "{{ ['rpm', '-q'] + common_required_packages[inventory_hostname] }}"
+  changed_when: false

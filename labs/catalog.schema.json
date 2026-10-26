@@ -1,24 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RHCSA lab exercise metadata",
-  "type": "object",
-  "required": ["id", "number", "title", "domain", "hosts", "description", "instructions"],
-  "properties": {
-    "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-    "number": {"type": "integer", "minimum": 1},
-    "title": {"type": "string"},
-    "domain": {"type": "string"},
-    "hosts": {
-      "type": "array",
-      "items": {"enum": ["workstation", "servera", "serverb"]},
-      "minItems": 1
-    },
-    "description": {"type": "string"},
-    "instructions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
-    "warning": {"type": "string"},
-    "solve_target": {"type": "string"},
-    "solve_method": {"type": "string"},
-    "solve_command": {"type": "string"},
-    "solve_note": {"type": "string"}
+  "title": "Catálogo de labs RHCSA (formato do homelab, consumido pelo dashboard e pelo lab_wrapper)",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "number", "title", "host", "hosts", "description", "instructions",
+                 "warning", "solve_target", "solve_method", "solve_command", "solve_note"],
+    "properties": {
+      "id": {"type": "string", "pattern": "^examsim-[a-z0-9-]+$"},
+      "number": {"type": "integer", "minimum": 0, "description": "0 = prova orquestrada (examsim-full, examsim-dinamico)"},
+      "title": {"type": "string", "minLength": 1},
+      "host": {"type": "string", "minLength": 1, "description": "rótulo livre exibido no painel (ex.: 'workstation → servera')"},
+      "hosts": {"type": "array", "minItems": 1, "uniqueItems": true,
+                "items": {"enum": ["workstation", "servera", "serverb"]},
+                "description": "hosts cujo grade precisa de RESULTADO: PASSOU"},
+      "description": {"type": "string"},
+      "instructions": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+      "warning": {"type": "string"},
+      "solve_target": {"type": "string", "minLength": 1},
+      "solve_method": {"enum": ["ssh", "console"]},
+      "solve_command": {"type": "string", "pattern": "^(ssh (servera|serverb))?$",
+                        "description": "'ssh servera|serverb' quando solve_method=ssh; vazio quando console"},
+      "solve_note": {"type": "string", "minLength": 1},
+      "grade": {"type": "boolean", "description": "false = 'lab grade' recusado (correção só no finish)"},
+      "dynamic": {"type": "boolean", "description": "true = painel de questões sorteadas (examsim-dinamico)"},
+      "exam_limit_minutes": {"type": "integer", "minimum": 1, "description": "contagem regressiva visual"}
+    }
   }
 }

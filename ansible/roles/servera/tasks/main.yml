@@ -1,15 +1,20 @@
 ---
-# servera não tem necessidades além de common + lab_common (dispatcher local
-# + exercícios atribuídos a ela). Este role existe para paralelismo com
-# serverb e como ponto de extensão futuro (specs em machines.yaml já
-# preveem, por exemplo, discos extra por host caso um exercício futuro
-# precise em servera também).
+# servera: o que o homelab tem além de common + lab_common (scripts, que são
+# do role lab_common). Pacotes já vieram pela paridade do common
+# (files/homelab-rpms/servera.txt: httpd, flatpak, autofs, nfs-utils...).
+# Rede (ens18 + ens19/examsim-ens19-reset + rp_filter) também é do common,
+# porque precisa do reboot controlado antes de tudo.
 
-- name: Instalar pacotes de servidor comuns aos exercícios
-  ansible.builtin.dnf:
-    name:
-      - firewalld
-      - policycoreutils-python-utils
-      - setroubleshoot-server
-      - nfs-utils
-    state: present
+- name: Firewall igual ao homelab (zona public)
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    zone: public
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: "{{ servera_firewalld_services }}"
+
+- name: Confirmar discos extra virtio de 2 e 3 GiB
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: extra-disks

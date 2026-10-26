@@ -1,7 +1,7 @@
 #!/bin/bash
 # Serve BaseOS/AppStream da DVD ISO (RHEL_ISO_PATH) via HTTP simples, para o
-# modo TESTE/aceitação sem subscription real (ver docs/troubleshooting.md,
-# seção "Modo offline via ISO"). Usado por `make provision-offline` / `make deploy-offline`.
+# modo TESTE/aceitação sem subscription real (ver docs/how-to/deploy-offline.md
+# e docs/explanation/arquitetura.md, seção "Subscription e modo offline"). Usado por `make provision-offline` / `make deploy-offline`.
 #
 # Não é um espelho de produção: sem updates/erratas, só o conteúdo
 # congelado da ISO no momento do download. Serve apenas na rede privada do

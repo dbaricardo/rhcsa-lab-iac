@@ -5,17 +5,17 @@
 # NÃO valida se o exercício foi resolvido corretamente -- só confirma que os
 # três comandos executam sem falha de INFRAESTRUTURA (SSH, dispatcher,
 # dashboard). Código de saída 2 == falha real de conectividade/infra,
-# refletindo o mesmo contrato do dispatcher `lab` (ver docs/architecture.md).
+# refletindo o mesmo contrato do dispatcher `lab` (ver docs/explanation/arquitetura.md).
 #
-# Seguro de rodar múltiplas vezes: users-groups-01/start.sh é idempotente
-# (contrato de docs/exercises-authoring-guide.md) e finish.sh sempre roda no
+# Seguro de rodar múltiplas vezes: o start do examsim-grupos é idempotente
+# (contrato de docs/reference/contrato-exercicios.md) e finish.sh sempre roda no
 # final, deixando o exercício limpo.
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR" || exit 1
 
-EXAMPLE_LAB="users-groups-01"
+EXAMPLE_LAB="examsim-grupos"
 FAILURES=0
 
 # Diretório temporário isolado por execução -- evita colidir com uma outra
@@ -90,19 +90,20 @@ ok "'$EXAMPLE_LAB' aparece no catálogo"
 # --- 4. ciclo start/grade/finish do exercício de exemplo --------------------
 # Só confirma que o ciclo completo roda sem erro de infraestrutura -- não
 # resolve o exercício de verdade, então "lab grade" deve reportar FALHOU (é
-# esperado) e ainda assim sair com código 0, por contrato do grade.sh (ver
-# docs/exercises-authoring-guide.md). Um código de saída diferente de 0 aqui
-# indica falha de infra (ex.: SSH para o host do exercício não funcionou),
-# não o resultado do exercício em si.
+# esperado) e sair com código 1, como os grades do homelab (ver
+# docs/reference/contrato-exercicios.md). Em grade, só é falha de infra um
+# código diferente de 0/1 ou a ausência da linha RESULTADO; em start/finish,
+# qualquer código diferente de 0.
 for action in start grade finish; do
   info "workstation: lab $action $EXAMPLE_LAB"
   ACTION_OUT="$WORK_DIR/${action}.out"
-  if bash scripts/lab-ssh.sh workstation "lab $action $EXAMPLE_LAB" >"$ACTION_OUT" 2>&1; then
-    ok "'lab $action $EXAMPLE_LAB' executou com sucesso (código 0)"
+  bash scripts/lab-ssh.sh workstation "lab $action $EXAMPLE_LAB" >"$ACTION_OUT" 2>&1
+  RC=$?
+  if [ "$RC" -eq 0 ] || { [ "$action" = grade ] && [ "$RC" -eq 1 ] && grep -q "RESULTADO:" "$ACTION_OUT"; }; then
+    ok "'lab $action $EXAMPLE_LAB' executou (código $RC)"
   else
-    RC=$?
     cat "$ACTION_OUT" >&2
-    die_infra "'lab $action $EXAMPLE_LAB' saiu com código $RC (esperado 0 -- ver saída acima)"
+    die_infra "'lab $action $EXAMPLE_LAB' saiu com código $RC (ver saída acima)"
   fi
 done
 

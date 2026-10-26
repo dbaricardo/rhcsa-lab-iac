@@ -1,0 +1,180 @@
+---
+# Rede igual às VMs do homelab:
+#   - NIC de gerência chamada ens18 (servera: + ens19 na MESMA rede);
+#   - perfil NM "ens18" estático (IP de machines.yaml, gw/DNS traduzidos),
+#     autoconnect-priority=-999 como o gerado pela Anaconda no homelab;
+#   - servera: perfil "examsim-ens19-reset" inativo (sem IP) + rp_filter=0
+#     na ens19 (/etc/sysctl.d/99-examsim-net.conf, cópia literal).
+#
+# Por que .link + reboot controlado (e não renomear na imagem nem via
+# virt-customize no Terraform): o MAC é por VM, então nada disso cabe na
+# imagem golden genérica; injetar arquivos no qcow2 pelo Terraform exigiria
+# libguestfs como root sobre volumes do pool (permissões variam por host) e
+# acoplaria o Terraform ao conteúdo do SO. O .link do systemd casando o MAC
+# fixo é o mecanismo suportado pelo RHEL 10 para nomes customizados, vale
+# desde o initramfs (regenerado aqui) e sobrevive a reboot. A troca de nome
+# da interface de gerência só acontece no boot, e o IP NÃO muda (a reserva
+# DHCP do libvirt e o perfil estático usam o mesmo endereço), então o
+# ansible.builtin.reboot reconecta sozinho no mesmo ansible_host.
+
+- name: Ler as NICs deste host em machines.yaml
+  ansible.builtin.set_fact:
+    common_nics: "{{ lab_spec.machines[inventory_hostname].nics }}"
+
+- name: Arquivos .link (nome fixo ens18/ens19 pelo MAC)
+  ansible.builtin.template:
+    src: nic.link.j2
+    dest: "/etc/systemd/network/{{ 10 + idx }}-{{ item.name }}.link"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ common_nics }}"
+  loop_control:
+    index_var: idx
+    label: "{{ item.name }} = {{ item.mac }}"
+  register: common_links
+
+# force: false -- o NetworkManager reescreve o keyfile ao ativar o perfil
+# (linha timestamp=), então um template "sempre" reiniciaria a VM a cada
+# `make provision`. Divergência de IP é corrigida abaixo via nmcli.
+- name: Perfil NM "ens18" (estático, igual ao homelab traduzido)
+  ansible.builtin.template:
+    src: ens18.nmconnection.j2
+    dest: /etc/NetworkManager/system-connections/ens18.nmconnection
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  register: common_ens18_profile
+
+- name: Perfil NM "examsim-ens19-reset" (servera; inativo, sem IP)
+  ansible.builtin.template:
+    src: examsim-ens19-reset.nmconnection.j2
+    dest: /etc/NetworkManager/system-connections/examsim-ens19-reset.nmconnection
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+  register: common_ens19_profile
+  when: common_nics | selectattr('name', 'equalto', 'ens19') | list | length > 0
+
+- name: rp_filter=0 na ens19 (servera; mesmo arquivo do homelab)
+  ansible.builtin.copy:
+    src: 99-examsim-net.conf
+    dest: /etc/sysctl.d/99-examsim-net.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: common_nics | selectattr('name', 'equalto', 'ens19') | list | length > 0
+
+# Perfis de rede herdados da imagem/1o boot (o da Anaconda, "Wired
+# connection N" etc.) competiriam com o "ens18" no próximo boot. Apagar o
+# keyfile não derruba a conexão ativa agora (o NM só relê no boot).
+- name: Listar keyfiles NM existentes
+  ansible.builtin.find:
+    paths: /etc/NetworkManager/system-connections
+    patterns: "*.nmconnection"
+  register: common_nm_keyfiles
+
+- name: Remover perfis NM que não existem no homelab
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ common_nm_keyfiles.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: (item.path | basename) not in ['ens18.nmconnection', 'examsim-ens19-reset.nmconnection']
+  register: common_nm_removed
+
+- name: Contexto SELinux dos keyfiles e .link
+  ansible.builtin.command: restorecon -R /etc/NetworkManager/system-connections /etc/systemd/network /etc/sysctl.d
+  changed_when: false
+
+- name: Decidir se precisa do reboot de troca de nome
+  ansible.builtin.set_fact:
+    common_net_reboot: >-
+      {{ common_links is changed
+         or common_ens18_profile is changed
+         or (common_ens19_profile is changed)
+         or common_nm_removed is changed
+         or ansible_facts['interfaces'] | select('equalto', 'ens18') | list | length == 0 }}
+
+# O initramfs também aplica .link (udev); regenerar evita a NIC nascer com
+# outro nome no initrd e o rename do root falhar por interface já "up".
+- name: Regenerar initramfs com os .link
+  ansible.builtin.command: dracut -f --regenerate-all
+  changed_when: true
+  when: common_net_reboot | bool
+
+- name: Reiniciar para aplicar ens18/ens19 (IP de gerência não muda)
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    msg: "rhcsa-lab-iac: aplicando nomes ens18/ens19 e perfil NM ens18"
+  when: common_net_reboot | bool
+
+- name: Reler fatos de rede após o reboot
+  ansible.builtin.setup:
+    gather_subset: [network]
+  when: common_net_reboot | bool
+
+- name: Conferir ens18 (e ens19 na servera) com os MACs de machines.yaml
+  ansible.builtin.assert:
+    that:
+      - item.name in ansible_facts['interfaces']
+      - (ansible_facts[item.name]['macaddress'] | lower) == (item.mac | lower)
+    fail_msg: >-
+      {{ inventory_hostname }}: interface {{ item.name }} ausente ou com MAC
+      diferente de machines.yaml ({{ item.mac }}). Ver /etc/systemd/network/
+      e `udevadm test-builtin net_setup_link /sys/class/net/<nic>`.
+    quiet: true
+  loop: "{{ common_nics }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ler IPv4 configurado no perfil ens18
+  ansible.builtin.command: nmcli -g ipv4.addresses connection show ens18
+  register: common_ens18_addr
+  changed_when: false
+
+- name: Corrigir IP/gateway/DNS do perfil ens18 se machines.yaml mudou
+  ansible.builtin.command:
+    argv:
+      - nmcli
+      - connection
+      - modify
+      - ens18
+      - ipv4.method
+      - manual
+      - ipv4.addresses
+      - "{{ lab_hosts_ip[inventory_hostname] }}/{{ lab_network_cidr.split('/')[1] }}"
+      - ipv4.gateway
+      - "{{ lab_gateway_ip }}"
+      - ipv4.dns
+      - "{{ lab_dns_servers | join(',') }}"
+      - ipv4.dns-search
+      - "{{ lab_domain }}"
+  changed_when: true
+  when: common_ens18_addr.stdout != lab_hosts_ip[inventory_hostname] ~ '/' ~ lab_network_cidr.split('/')[1]
+
+# Igual ao lab-network-reset.sh do homelab: o perfil-base inativo impede o
+# perfil DHCP automático do NM; se mesmo assim algum aparecer (ex.: NM mais
+# novo), apaga e desconecta para a ens19 ficar sem IP.
+- name: Garantir ens19 sem IPv4 (servera)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    [ -z "$(nmcli -g IP4.ADDRESS device show ens19)" ] && exit 0
+    while IFS= read -r uuid; do
+      [ -n "$uuid" ] || continue
+      dev=$(nmcli -g connection.interface-name connection show uuid "$uuid" || true)
+      id=$(nmcli -g connection.id connection show uuid "$uuid" || true)
+      if [ "$dev" = "ens19" ] && [ "$id" != "examsim-ens19-reset" ]; then
+        nmcli connection delete uuid "$uuid" >/dev/null
+      fi
+    done < <(nmcli -t -f UUID,DEVICE connection show --active | awk -F: '$2=="ens19"{print $1}')
+    nmcli device disconnect ens19 >/dev/null 2>&1 || true
+    echo CHANGED
+  args:
+    executable: /bin/bash
+  register: common_ens19_reset
+  changed_when: "'CHANGED' in common_ens19_reset.stdout"
+  when: common_nics | selectattr('name', 'equalto', 'ens19') | list | length > 0

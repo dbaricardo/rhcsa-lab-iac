@@ -47,8 +47,10 @@ timed() {
 dashboard_ip() { python3 -c "import yaml; s=yaml.safe_load(open('machines.yaml')); print(s['machines'][s['dashboard']['host']]['ip'])"; }
 dashboard_port() { python3 -c "import yaml; print(yaml.safe_load(open('machines.yaml'))['dashboard']['port'])"; }
 
-lab_ids() { python3 -c "import json; [print(l['id']) for l in json.load(open('labs/catalog.json'))]"; }
-lab_hosts() { python3 -c "import json,sys; [print(h) for l in json.load(open('labs/catalog.json')) if l['id']==sys.argv[1] for h in l['hosts']]" "$1"; }
+# Exercícios avulsos (number >= 1). A prova completa e o exame dinâmico
+# (number 0) têm fases próprias: T12 e T13.
+lab_ids() { python3 -c "import json; [print(l['id']) for l in sorted(json.load(open('labs/catalog.json')), key=lambda l: l['number']) if l['number'] >= 1]"; }
+catalog_total() { python3 -c "import json; print(len(json.load(open('labs/catalog.json'))))"; }
 
 VMS=(workstation servera serverb)
 vm_ssh() { bash scripts/lab-ssh.sh "$@"; }
@@ -71,21 +73,26 @@ grade_result() {
   local out rc
   out="$(vm_ssh workstation "lab grade $2" 2>&1)"
   rc=$?
-  if [ "$rc" -ne 0 ]; then
+  # Grade do homelab: sai 0 se passou e 1 se algum critério falhou. Erro de
+  # infra = qualquer outro código ou nenhuma linha RESULTADO na saída.
+  if { [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; } || ! grep -q "RESULTADO:" <<<"$out"; then
     echo "ERRO_INFRA (rc=$rc): $out" >&2
     echo "ERRO_INFRA"
     return
   fi
-  echo "$out" | grep -q "RESULTADO: PASSOU" && echo "PASSOU" || echo "FALHOU"
+  grep -q "RESULTADO: PASSOU" <<<"$out" && echo "PASSOU" || echo "FALHOU"
 }
 
 run_solution() {
-  # run_solution <lab> : roda tests/solutions/<lab>.sh em cada host do lab
+  # run_solution <lab> : aplica a solução de referência (tests/solutions/legacy.sh),
+  # como root, no host da questão.
   local lab="$1" host
-  while read -r host; do
-    vm_ssh "$host" 'sudo bash -s' < "tests/solutions/${lab}.sh"
-  done < <(lab_hosts "$lab")
+  host="$(bash tests/solutions/legacy.sh --host "$lab")" || return 1
+  vm_ssh "$host" "sudo bash -s -- $lab" < tests/solutions/legacy.sh
 }
+
+# Seeds do exame dinâmico que, juntas, cobrem as 24 questões legadas.
+DYN_SEEDS="${DYN_SEEDS:-3694 1091 47 1478 11 48 50}"
 
 echo "== Teste de aceitação rhcsa-lab-iac -- log em $LOG_FILE =="
 command -v terraform >/dev/null 2>&1 || die_infra "comando 'terraform' não encontrado"
@@ -250,15 +257,25 @@ t8_dashboard() {
     step_fail "GET ${url}/healthz falhou"
   fi
 
-  local n_labs
-  n_labs="$(lab_ids | wc -l)"
-  if [ "$n_labs" -eq 10 ]; then
-    step_ok "catalog.json tem os 10 exercícios esperados"
+  local n_labs n_total
+  n_labs="$(lab_ids | wc -l)"; n_total="$(catalog_total)"
+  if [ "$n_total" -eq 27 ] && [ "$n_labs" -eq 25 ]; then
+    step_ok "catalog.json tem as 27 entradas do homelab (25 exercícios + prova completa + dinâmico)"
   else
-    step_fail "catalog.json não tem 10 exercícios (tem $n_labs) -- rode 'make catalog'"
+    step_fail "catalog.json deveria ter 27 entradas / 25 exercícios (tem $n_total / $n_labs)"
   fi
 
-  if curl -fsS --max-time 10 "${url}/" 2>/dev/null | grep -q "lab"; then
+  if curl -fsS --max-time 10 "${url}/api/state" | python3 -c "import json,sys; d=json.load(sys.stdin); assert len(d['tasks'])==27" 2>/dev/null; then
+    step_ok "GET ${url}/api/state lista as 27 tarefas"
+  else
+    step_fail "GET ${url}/api/state não lista as 27 tarefas"
+  fi
+
+  # Sem pipe direto: com pipefail, o grep -q sai cedo e o curl morre com
+  # SIGPIPE (rc 23), reprovando uma página que respondeu certo.
+  local page
+  page="$(curl -fsS --max-time 10 "${url}/" 2>/dev/null)"
+  if grep -q "<title>RHCSA" <<<"$page"; then
     step_ok "GET ${url}/ devolve a página do dashboard"
   else
     step_fail "GET ${url}/ não devolveu a página do dashboard"
@@ -267,7 +284,7 @@ t8_dashboard() {
 
 # --- T9: ciclo completo de cada exercício -------------------------------------
 t9_exercicios() {
-  section T9 "ciclo start/grade/finish + solução, para cada um dos 10 exercícios"
+  section T9 "ciclo start/grade/finish + solução, para cada um dos 25 exercícios"
   local lab res
   while read -r lab; do
     echo "--- $lab ---"
@@ -333,11 +350,79 @@ t10_reboot() {
   fi
 
   local res
-  res="$(grade_result workstation users-groups-01)"
+  res="$(grade_result workstation examsim-grupos)"
   if [ "$res" != "ERRO_INFRA" ]; then
     step_ok "'lab grade' funciona após reboot"
   else
     step_fail "'lab grade' com erro de infra após reboot"
+  fi
+}
+
+# --- T12: prova completa (examsim-full) ---------------------------------------
+t12_prova_completa() {
+  section T12 "examsim-full: start, grade recusado, finish corrige e limpa"
+  local out="output/acceptance-t12.out"
+  timed "examsim-full start" vm_ssh workstation "lab start examsim-full" >"$out" 2>&1 \
+    || { step_fail "'lab start examsim-full' falhou (ver $out)"; return; }
+  step_ok "'lab start examsim-full' preparou as 24 questões"
+
+  if vm_ssh workstation "lab grade examsim-full" >>"$out" 2>&1; then
+    step_fail "'lab grade examsim-full' deveria ser recusado (correção só no finish)"
+  else
+    step_ok "'lab grade examsim-full' recusado, como no homelab"
+  fi
+
+  # O finish sai 1 quando a prova reprova (aqui, sem solução, sempre): só é
+  # falha de verdade se não imprimiu a nota.
+  timed "examsim-full finish" vm_ssh workstation "lab finish examsim-full" >>"$out" 2>&1
+  if grep -Eq "Nota [0-9]+/24" "$out"; then
+    step_ok "finish corrigiu a prova ($(grep -Eo 'Nota [0-9]+/24' "$out" | tail -1), sem solução aplicada)"
+  else
+    step_fail "finish não mostrou a nota X/24 (ver $out)"
+  fi
+
+  # Depois do finish, um exercício avulso precisa funcionar de novo.
+  if vm_ssh workstation "lab start examsim-grupos" >>"$out" 2>&1 \
+     && vm_ssh workstation "lab finish examsim-grupos" >>"$out" 2>&1; then
+    step_ok "ambiente utilizável depois do finish da prova completa"
+  else
+    step_fail "ambiente sujo depois do finish da prova completa (ver $out)"
+  fi
+}
+
+# --- T13: exame dinâmico, ciclo real com seeds fixas --------------------------
+t13_exame_dinamico() {
+  section T13 "examsim-dinamico: 24 questões sorteadas, resolvidas e corrigidas (seeds: $DYN_SEEDS)"
+  local seed out dyn=/usr/local/lib/lab-dyn
+  for seed in $DYN_SEEDS; do
+    out="output/acceptance-t13-${seed}.out"
+    echo "--- seed $seed ---"
+    timed "dinâmico start (seed $seed)" vm_ssh workstation "LAB_SEED=$seed lab start examsim-dinamico" >"$out" 2>&1 \
+      || { step_fail "seed $seed: 'lab start examsim-dinamico' falhou (ver $out)"
+           # Sem isso a prova fica aberta e todas as seeds seguintes falham em cascata.
+           vm_ssh workstation "lab finish examsim-dinamico" >>"$out" 2>&1
+           continue; }
+
+    vm_ssh workstation "$dyn/qa/solve-exam.sh </dev/null" >>"$out" 2>&1 \
+      || step_fail "seed $seed: qa/solve-exam.sh falhou (ver $out)"
+    vm_ssh workstation "$dyn/qa/solve-legacy.sh </dev/null" >>"$out" 2>&1 \
+      || step_fail "seed $seed: qa/solve-legacy.sh falhou (ver $out)"
+
+    # rc 1 = reprovou; a nota abaixo diz o resto.
+    timed "dinâmico finish (seed $seed)" vm_ssh workstation "lab finish examsim-dinamico" >>"$out" 2>&1
+
+    if grep -q "Nota 24/24" "$out"; then
+      step_ok "seed $seed: 24/24, aprovado"
+      rm -f "$out"
+    else
+      step_fail "seed $seed: nota diferente de 24/24 ($(grep -Eo 'Nota [0-9]+/24' "$out" | tail -1)) -- ver $out"
+    fi
+  done
+
+  if vm_ssh workstation "test ! -e ~/examsim-dinamico/.aberta"; then
+    step_ok "nenhuma prova dinâmica ficou aberta"
+  else
+    step_fail "prova dinâmica ficou aberta (~/examsim-dinamico/.aberta)"
   fi
 }
 
@@ -377,6 +462,8 @@ t5_t6_provision_offline
 t7_smoke
 t8_dashboard
 t9_exercicios
+t12_prova_completa
+t13_exame_dinamico
 t10_reboot
 t11_ciclo_limpo
 make offline-repo-stop >/dev/null 2>&1 || true

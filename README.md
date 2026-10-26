@@ -3,11 +3,14 @@
 Infraestrutura como código para um laboratório de estudos para o exame
 **RHCSA (EX200)** da Red Hat, totalmente reproduzível a partir de uma ISO
 RHEL 10 própria: três VMs (`workstation`, `servera`, `serverb`) criadas por
-**Terraform** sobre libvirt/KVM e configuradas por **Ansible**, com um
-catálogo extensível de exercícios práticos, correção automática e um
-dashboard web de acompanhamento. Um comando (`make deploy`) faz tudo.
+**Terraform** sobre libvirt/KVM e configuradas por **Ansible**. É uma cópia
+fiel do lab RHCSA do homelab do autor: 25 exercícios avulsos `examsim-*`
+com correção automática, a prova completa `examsim-full` (24 questões), o
+exame dinâmico `examsim-dinamico` (24 questões sorteadas de um pool de 166),
+um mirror de pacotes/flatpak no estilo "classroom" e um dashboard web de
+acompanhamento. Um comando (`make deploy`) faz tudo.
 
-**Primeira vez aqui? Siga o [tutorial completo](docs/tutorial-fim-a-fim.md)**
+**Primeira vez aqui? Siga o [tutorial completo](docs/tutorials/primeiro-lab-fim-a-fim.md)**
 — ele assume zero conhecimento prévio deste repositório e cobre cada passo,
 do zero até resolver o primeiro exercício.
 
@@ -28,8 +31,9 @@ No host onde as VMs vão rodar (Linux com suporte a KVM):
   (`ansible-galaxy collection install -r ansible/requirements.yml`)
 - **python3** (com PyYAML), **envsubst** (pacote `gettext`), **qemu-img**,
   **xorriso**
-- **Recursos**: ~8 GB de RAM livres (3 VMs de 2 GB + o host) e ~40 GB de
-  disco
+- **Recursos**: ~8 GB de RAM livres (3 VMs de 2 GB + o host) e ~45 GB de
+  disco; **internet** no deploy para o mirror flatpak (~1,6 GB, desligável
+  com `FLATPAK_MIRROR_ENABLED=false`)
 - A **ISO oficial do RHEL 10** (DVD, não a boot ISO) baixada da sua própria
   conta Red Hat — este repositório nunca inclui ou redistribui a ISO
 - Uma conta **Red Hat Developer Subscription for Individuals** (gratuita),
@@ -38,7 +42,7 @@ No host onde as VMs vão rodar (Linux com suporte a KVM):
 
 Rode `make check-env` para validar tudo isso automaticamente antes de
 continuar. Detalhes de como obter a conta/ISO estão no
-[tutorial completo](docs/tutorial-fim-a-fim.md).
+[tutorial completo](docs/tutorials/primeiro-lab-fim-a-fim.md).
 
 ## Passo a passo resumido
 
@@ -56,8 +60,10 @@ make deploy         # imagem golden (se ainda não existir) + 3 VMs + Ansible
    `virt-install` + kickstart (só na primeira vez, ~10 min)
 2. `make infra` — `terraform apply`: rede NAT `192.168.56.0/24`, discos e as
    3 VMs, e gera o inventário do Ansible em `output/inventory.yml`
-3. `make provision` — Ansible: registra cada VM na subscription, instala os
-   pacotes, os exercícios, o dispatcher `lab` e o dashboard
+3. `make provision` — Ansible: registra cada VM na subscription, deixa rede,
+   discos e pacotes iguais ao homelab, monta o classroom na workstation,
+   instala exercícios, provas, o comando `lab` e o dashboard, e termina
+   **desabilitando todos os repositórios** (como no homelab)
 
 Sem conta Red Hat (só para testar a infraestrutura), use `make deploy-offline`:
 os pacotes vêm da própria ISO, sem updates.
@@ -75,11 +81,13 @@ Todo o trabalho com exercícios é feito de dentro da `workstation`:
 ```bash
 make ssh-workstation
 
-lab list                       # lista o catálogo de exercícios
-lab start users-groups-01      # prepara o ambiente do exercício
-# ... resolva o exercício no host indicado (servera/serverb, ou na própria workstation) ...
-lab grade users-groups-01      # avalia e registra o resultado no dashboard
-lab finish users-groups-01     # limpa o estado do exercício
+lab list                       # lista os exercícios
+lab start examsim-grupos       # prepara o exercício (na servera)
+# ... resolva em servera/serverb: ssh servera ...
+lab grade examsim-grupos       # avalia sem destruir e registra no dashboard
+lab finish examsim-grupos      # avalia de novo e limpa
+
+lab start examsim-dinamico     # prova sorteada: 24 questões, nota só no finish
 ```
 
 Para destruir as VMs, os discos e a rede (sem remover a imagem golden já
@@ -109,36 +117,35 @@ Lista completa de targets do `Makefile`: `make help`.
 - **RHEL 10 real**, não uma distribuição derivada, porque o objetivo é
   praticar para um exame que é aplicado sobre RHEL de verdade (registro via
   Red Hat Developer Subscription for Individuals, gratuita). Há uma
-  [nota sobre fallback com Rocky Linux](docs/rocky-linux-fallback.md), mas
+  [guia para usar Rocky Linux](docs/how-to/usar-rocky-linux.md), mas
   não é o caminho testado/mantido com o mesmo rigor.
-- **Dispatcher `lab` (remoto, na workstation) delega por SSH** para
-  `lab-remote` (local, em servera/serverb) — o dispatcher remoto nunca
-  executa lógica de exercício localmente; se o host de destino estiver
-  inacessível, ele falha explicitamente (código de saída 2) em vez de
-  silenciosamente pular a etapa.
+- **Comando `lab` em três camadas:** wrapper na workstation (registra no
+  dashboard) → dispatcher → `ssh root@servera|serverb lab ...`; se o host
+  estiver inacessível, falha explicitamente (código 2).
+- **"Classroom" na workstation:** o mirror `content.example.com:8091`, o
+  repositório flatpak e o NTP, que no homelab são uma LXC separada, aqui
+  são serviços da própria workstation, com os mesmos nomes e caminhos.
 
 Detalhes completos, diagrama da topologia e as decisões de design com o
-porquê: [docs/architecture.md](docs/architecture.md).
+porquê: [docs/explanation/arquitetura.md](docs/explanation/arquitetura.md).
 
-## Problemas conhecidos
+## Documentação
 
-Bugs reais já encontrados em produção (GPG/assinatura de pacotes, enumeração
-instável de disco, SELinux `unlabeled_t` pós-clone, limite de sistemas da
-subscription gratuita, entre outros), já mitigados no código, mas úteis de
-conhecer: [docs/troubleshooting.md](docs/troubleshooting.md).
+A documentação segue o [Diátaxis](https://diataxis.fr) — índice completo em
+[docs/README.md](docs/README.md):
 
-## Contribuindo com novos exercícios
-
-`labs/` contém um conjunto extensível de exercícios originais, cobrindo os
-domínios públicos do blueprint EX200. Para escrever um novo exercício
-(estrutura de arquivos, contrato de saída do `grade.sh`, regras não
-negociáveis), ver o
-[guia de autoria de exercícios](docs/exercises-authoring-guide.md).
+| Quero… | Comece por |
+|---|---|
+| montar o lab pela primeira vez | [Tutorial: do zero ao primeiro exercício](docs/tutorials/primeiro-lab-fim-a-fim.md) |
+| fazer uma tarefa específica | [Operar o lab](docs/how-to/operar-o-lab.md), [Modo offline](docs/how-to/deploy-offline.md), [Resolver problemas](docs/how-to/resolver-problemas.md), [Criar um exercício](docs/how-to/criar-exercicio.md) |
+| consultar comandos e valores | [Makefile](docs/reference/makefile.md), [Configuração](docs/reference/configuracao.md), [Comando `lab`](docs/reference/comando-lab.md), [Catálogo](docs/reference/catalogo-exercicios.md) |
+| entender o porquê | [Arquitetura](docs/explanation/arquitetura.md), [Problemas conhecidos](docs/explanation/problemas-conhecidos.md) |
 
 ## Direitos autorais
 
 Este projeto **não inclui** nenhum trecho do material oficial de treinamento
 da Red Hat ("RH199 Rapid Track Student Workbook" ou qualquer outro). Os
-exercícios são escritos do zero pelo autor. Ver
-[NOTICE.md](NOTICE.md) e [docs/copyright-notice.md](docs/copyright-notice.md)
+exercícios vêm de um simulado público e de material MIT de terceiros,
+creditados no NOTICE. Ver
+[NOTICE.md](NOTICE.md) e [docs/explanation/direitos-autorais.md](docs/explanation/direitos-autorais.md)
 para o contexto completo.

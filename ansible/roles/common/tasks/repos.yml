@@ -1,0 +1,124 @@
+---
+# Modo TESTE/aceitação, sem subscription real (ver docs/how-to/deploy-offline.md
+# e docs/explanation/arquitetura.md, seção "Subscription e modo offline", e scripts/offline-repo.sh): quando
+# lab_offline_repo_url estiver preenchida, aponta BaseOS/AppStream para o
+# HTTP servido a partir da DVD ISO montada no host, em vez dos repos da Red
+# Hat CDN -- não substitui a subscription real (sem updates/erratas), só
+# existe para validar o resto do provisionamento (pacotes/roles/exercícios)
+# sem depender de uma conta Red Hat.
+- name: "[modo offline] Configurar repo BaseOS a partir da ISO"
+  ansible.builtin.yum_repository:
+    name: lab-offline-baseos
+    description: "RHCSA lab (offline/teste) - BaseOS"
+    baseurl: "{{ lab_offline_repo_url }}/BaseOS"
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+  when: lab_offline_repo_url | length > 0
+
+- name: "[modo offline] Configurar repo AppStream a partir da ISO"
+  ansible.builtin.yum_repository:
+    name: lab-offline-appstream
+    description: "RHCSA lab (offline/teste) - AppStream"
+    baseurl: "{{ lab_offline_repo_url }}/AppStream"
+    gpgcheck: true
+    gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+  when: lab_offline_repo_url | length > 0
+
+# Subscription: nunca embutida na imagem golden (as 3 VMs clonadas
+# compartilhariam o mesmo consumer ID na Red Hat, o que já causou conflito
+# real). Cada VM se registra aqui, individualmente, depois de clonada -- e
+# por isso ganha identidade própria -- usando RHSM_ORG_ID/RHSM_ACTIVATION_KEY
+# do .env. Sem essas variáveis, assume que você registrou à mão; se não
+# registrou, falha cedo, antes de qualquer `dnf install`, em vez de um erro
+# genérico de "repositório vazio" bem mais adiante. Pulado inteiramente no
+# modo offline acima, que é sua forma explícita de dizer "sem subscription de
+# propósito".
+- name: Verificar se {{ inventory_hostname }} já está registrado na subscription
+  ansible.builtin.command: subscription-manager identity
+  register: lab_subscription_identity
+  changed_when: false
+  failed_when: false
+  when: lab_offline_repo_url | length == 0
+
+- name: Registrar {{ inventory_hostname }} na subscription (RHSM_ORG_ID/RHSM_ACTIVATION_KEY do .env)
+  ansible.builtin.command:
+    argv:
+      - subscription-manager
+      - register
+      - "--org={{ lab_rhsm_org_id }}"
+      - "--activationkey={{ lab_rhsm_activation_key }}"
+  no_log: true
+  register: lab_subscription_register
+  changed_when: lab_subscription_register.rc == 0
+  when:
+    - lab_offline_repo_url | length == 0
+    - lab_subscription_identity.rc != 0
+    - lab_rhsm_org_id | length > 0
+    - lab_rhsm_activation_key | length > 0
+
+- name: Falhar cedo se {{ inventory_hostname }} não estiver registrado na subscription
+  ansible.builtin.assert:
+    that:
+      - lab_subscription_identity.rc == 0 or (lab_subscription_register.rc | default(1)) == 0
+    fail_msg: >-
+      {{ inventory_hostname }} não está registrado na Red Hat subscription.
+      Preencha RHSM_ORG_ID e RHSM_ACTIVATION_KEY no .env e rode
+      'make provision' de novo, ou registre à mão
+      ('make ssh-{{ inventory_hostname }}', depois
+      sudo subscription-manager register --org=<ORG_ID>
+      --activationkey=<ACTIVATION_KEY>). Para testar sem conta Red Hat, use
+      'make deploy-offline'.
+    success_msg: "{{ inventory_hostname }}: subscription registrada, seguindo."
+  when: lab_offline_repo_url | length == 0
+
+# Re-provisionamento: o play de lockdown (site.yml) desabilita todos os
+# repositórios RHSM no fim do deploy (estado do homelab). Numa nova rodada
+# de `make provision`, religa só BaseOS/AppStream para os dnf dos roles.
+- name: Religar BaseOS/AppStream da subscription (desligados pelo lockdown anterior)
+  ansible.builtin.command:
+    argv:
+      - subscription-manager
+      - repos
+      - --enable=rhel-10-for-x86_64-baseos-rpms
+      - --enable=rhel-10-for-x86_64-appstream-rpms
+  register: lab_rhsm_repos_enable
+  changed_when: false
+  when: lab_offline_repo_url | length == 0
+
+# Bug conhecido (ver docs/explanation/problemas-conhecidos.md): RHEL10.0/10.x assina pacotes
+# com uma 4a chave de release pos-quantica ausente por padrao. O kickstart do
+# imagem golden já importa isso, mas repetir aqui protege quem clonar/usar um
+# imagem RHEL10 genérica própria (fora do fluxo scripts/build-image.sh deste repo).
+- name: Importar 4a chave de release do RHEL10 (bug conhecido de GPG)
+  ansible.builtin.rpm_key:
+    key: https://security.access.redhat.com/data/6afedf8f.txt
+    state: present
+  register: gpg_key_import
+  failed_when: false
+
+# Achado na homologação (T11, 2026-10-25): quando um pacote é assinado por
+# uma chave que ainda não está no keyring do rpm, o dnf importa o `gpgkey=`
+# do .repo sozinho -- e o parser do libdnf às vezes falha no arquivo do
+# RHEL 10 ("RuntimeError: Parsing armored OpenPGP packet(s) failed"),
+# abortando a instalação. O rpm importa o mesmo arquivo sem problema, então
+# todas as chaves de release entram aqui, antes de qualquer `dnf install`.
+- name: Importar as chaves de release locais com rpm (evita o parser do libdnf)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    # A -4 (pós-quântica) o rpm 4.19 do RHEL 10.0 não importa ("key 1 import
+    # failed"); fica como tentativa, para releases que já suportem.
+    if [ -f /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 ]; then
+      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 2>/dev/null || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Avisar se a 4a chave GPG não pôde ser importada (sem rede de saída?)
+  ansible.builtin.debug:
+    msg: >-
+      Não foi possível importar a 4a chave de release do RHEL10 automaticamente
+      (sem rede de saída no domínio libvirt?). Se `dnf install` falhar com
+      "SIGNATURE: NOT OK", ver docs/explanation/problemas-conhecidos.md.
+  when: gpg_key_import is failed

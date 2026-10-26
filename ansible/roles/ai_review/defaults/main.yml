@@ -1,0 +1,16 @@
+---
+# Revisão por IA e gravação de terminal: OPCIONAIS e desligadas por padrão.
+# As chaves liga/desliga são compartilhadas (group_vars/all.yml, definidas a
+# partir do .env); os valores abaixo são só fallback.
+ai_review_enabled: false
+rhcsa_recording_enabled: false
+
+# Revisor (ver contrib/ai-reviewer/README.md). Vêm do .env:
+#   AI_REVIEWER=usuario@host   AI_REVIEW_TIMEOUT=780
+ai_reviewer: "{{ lookup('ansible.builtin.env', 'AI_REVIEWER') }}"
+ai_review_timeout: "{{ lookup('ansible.builtin.env', 'AI_REVIEW_TIMEOUT') | default('780', true) }}"
+# Chave dedicada do student na workstation (relativa ao HOME do student).
+ai_review_key: .ssh/rhcsa_ai_review
+
+# Hosts cujas sessões interativas são gravadas (iguais ao homelab).
+rhcsa_recording_hosts: [servera, serverb, workstation]

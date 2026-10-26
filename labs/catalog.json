@@ -1,226 +1,551 @@
 [
   {
-    "id": "users-groups-01",
-    "number": 1,
-    "title": "Usuários, grupos e política de senha",
-    "domain": "Create and configure local users and groups",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Crie contas e associações de grupo para uma equipe fictícia, aplicando uma regra de expiração de senha.",
-    "instructions": [
-      "Crie o grupo 'equipe-suporte'.",
-      "Crie o usuário 'ana' com shell /bin/bash, membro secundário de 'equipe-suporte'.",
-      "Crie o usuário 'bruno' sem shell interativo (nologin) e sem pertencer a 'equipe-suporte'.",
-      "Configure a conta de 'ana' para exigir troca de senha a cada 90 dias (chage)."
-    ],
-    "warning": "Não reutilize os nomes 'ana'/'bruno'/'equipe-suporte' em outros exercícios deste host.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "permissions-acl-01",
-    "number": 2,
-    "title": "Permissões especiais (SGID) e ACLs em diretório compartilhado",
-    "domain": "Manage file permissions, special bits, and access control lists (ACLs)",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Um diretório de projeto passa a ser compartilhado por uma equipe. Novos arquivos criados nele devem herdar automaticamente o grupo do projeto, e uma colaboradora que não pertence ao grupo precisa de acesso pontual só a esse diretório.",
-    "instructions": [
-      "Crie o grupo 'projeto-atlas' (se ainda não existir).",
-      "Crie o diretório /dados/projeto-atlas, propriedade root:projeto-atlas, com permissões 2770 (rwxrws--- -- SGID habilitado, outros sem nenhum acesso).",
-      "A usuária 'carla' (já criada pelo lab start) NÃO deve ser adicionada ao grupo 'projeto-atlas'. Em vez disso, conceda a ela acesso de leitura e escrita nesse diretório usando uma ACL nomeada (setfacl -m u:carla:rw ...).",
-      "Configure também uma ACL padrão (default ACL) em /dados/projeto-atlas para que arquivos criados dentro dele no futuro herdem automaticamente o mesmo acesso de leitura/escrita para carla (setfacl -d -m u:carla:rw ...)."
-    ],
-    "warning": "Não adicione 'carla' ao grupo 'projeto-atlas' -- o objetivo do exercício é resolver o acesso dela via ACL, não via associação de grupo.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "storage-lvm-01",
-    "number": 3,
-    "title": "Armazenamento em camadas com LVM (PV/VG/LV) e XFS",
-    "domain": "Configure and manage layered storage with LVM and file systems",
-    "hosts": [
-      "serverb"
-    ],
-    "description": "Um disco extra de aproximadamente 6GB está disponível em serverb para armazenar mídia de um projeto interno. Configure-o via LVM para permitir expansão futura sem reparticionar.",
-    "instructions": [
-      "Identifique o disco extra de ~6GB (não é o disco do sistema) usando lsblk -- nunca assuma um nome fixo como /dev/sdb.",
-      "Transforme esse disco (ou uma partição nele) em um physical volume (PV) do LVM.",
-      "Crie o volume group 'vg_conteudo' sobre esse PV.",
-      "Crie o logical volume 'lv_midia' dentro de 'vg_conteudo' com pelo menos 4GB.",
-      "Formate 'lv_midia' com XFS e monte-o de forma permanente (via /etc/fstab) em /midia."
-    ],
-    "warning": "Este é o disco de ~6GB (vmdata1). Há um segundo disco extra de ~1GB (vmdata2) neste mesmo host, usado por outro exercício ('filesystems-01') -- não confunda os dois.",
-    "solve_target": "serverb",
-    "solve_method": "ssh",
-    "solve_command": "ssh serverb",
-    "solve_note": "Resolva na serverb. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "serverb"
-  },
-  {
-    "id": "filesystems-01",
-    "number": 4,
-    "title": "Partição, filesystem ext4 e swap adicional",
-    "domain": "Create simple file systems and manage swap space",
-    "hosts": [
-      "serverb"
-    ],
-    "description": "Um segundo disco extra, bem menor (~1GB), está disponível em serverb para praticar particionamento simples: parte dele vira um filesystem persistente para dados de aplicação, e o restante vira swap adicional.",
-    "instructions": [
-      "Identifique o disco extra de ~1GB (diferente do disco de ~6GB usado em 'storage-lvm-01') usando lsblk -- nunca assuma um nome fixo de dispositivo.",
-      "Crie nesse disco duas partições: uma para um filesystem e outra para swap.",
-      "Formate a partição de filesystem com ext4 e monte-a de forma permanente (via /etc/fstab) em /appdata.",
-      "Formate a partição restante como swap, ative-a e garanta que ela seja habilitada permanentemente (via /etc/fstab), de modo que apareça em 'swapon --show'."
-    ],
-    "warning": "Este é o disco de ~1GB (vmdata2), diferente do disco de ~6GB (vmdata1) usado por 'storage-lvm-01' no mesmo host -- use resolve_disco 1 para identificá-lo corretamente.",
-    "solve_target": "serverb",
-    "solve_method": "ssh",
-    "solve_command": "ssh serverb",
-    "solve_note": "Resolva na serverb. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "serverb"
-  },
-  {
-    "id": "networking-nmcli-01",
-    "number": 5,
-    "title": "Perfil de conexão estático com nmcli (sem afetar a interface de gerenciamento)",
-    "domain": "Configure networking with nmcli, including static IPv4 settings",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Pratique a criação de um perfil de conexão NetworkManager com IPv4 estático, associado a uma interface lógica de testes -- sem tocar na interface real que carrega o SSH deste host.",
-    "instructions": [
-      "Crie um novo perfil de conexão NetworkManager chamado 'perfil-backup', do tipo ethernet, associado ao nome de interface lógico 'eth1' (que não existe fisicamente neste host).",
-      "Configure esse perfil com IPv4 estático: endereço 192.168.100.50/24, gateway 192.168.100.1 e DNS 192.168.100.1.",
-      "NÃO ative esse perfil (nmcli connection up) -- ele deve existir apenas como configuração salva, sem alterar a conectividade atual do host."
-    ],
-    "warning": "NÃO edite nem ative a conexão da interface de gerenciamento real (a que carrega esta sessão SSH) -- isso pode derrubar seu próprio acesso remoto. Trabalhe só no novo perfil 'perfil-backup'.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "systemd-services-01",
-    "number": 6,
-    "title": "Unit systemd customizada + timer substituindo cron",
-    "domain": "Create and manage systemd units and timers",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Substitua uma tarefa periódica que seria feita por cron por um serviço e um timer systemd nativos, habilitados no boot.",
-    "instructions": [
-      "Crie a unit /etc/systemd/system/heartbeat.service (tipo oneshot) que, ao ser executada, grava uma linha com a data/hora atual em /var/log/heartbeat.log.",
-      "Crie a unit /etc/systemd/system/heartbeat.timer para disparar heartbeat.service periodicamente (por exemplo, a cada 1 ou 5 minutos), no lugar de uma entrada de cron.",
-      "Habilite (enable) e inicie o heartbeat.timer, garantindo que ele suba automaticamente no próximo boot.",
-      "Confirme que executar heartbeat.service manualmente (systemctl start heartbeat.service) grava uma nova linha em /var/log/heartbeat.log."
-    ],
-    "warning": "Habilite o TIMER (heartbeat.timer), não o service diretamente -- é o timer que precisa estar habilitado/ativo no boot.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "selinux-01",
-    "number": 7,
-    "title": "Contexto SELinux, porta customizada e boolean para um serviço web",
-    "domain": "Manage SELinux file contexts, ports and booleans for network services",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Um serviço web fictício ('portal-noturno') precisa servir conteúdo de um diretório fora do docroot padrão do Apache, escutar numa porta não padronizada e ter permissão para abrir conexões de saída -- tudo isso sob SELinux enforcing.",
-    "instructions": [
-      "Crie o diretório /srv/portal-noturno com um arquivo index.html contendo exatamente o texto 'Portal Noturno OK' (sem tags HTML).",
-      "Rotule /srv/portal-noturno (e seu conteúdo) com o contexto SELinux httpd_sys_content_t de forma persistente, usando semanage fcontext + restorecon -- não apenas chcon.",
-      "Configure o Apache (httpd, já instalado pelo lab start) para usar /srv/portal-noturno como DocumentRoot e escutar na porta TCP 8585.",
-      "Registre a porta 8585 no SELinux como http_port_t (semanage port), já que o Apache não pode escutar nela sem essa liberação sob SELinux enforcing.",
-      "Habilite o boolean SELinux 'httpd_can_network_connect' permanentemente, simulando a necessidade do portal-noturno de futuramente consultar um serviço de métricas externo.",
-      "Habilite e inicie o serviço httpd."
-    ],
-    "warning": "SELinux deve permanecer enforcing durante todo o exercício -- não desative nem coloque em permissive para 'resolver' o problema; use semanage/restorecon/setsebool corretamente.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "firewalld-01",
-    "number": 8,
-    "title": "Serviço e porta customizados persistentes no firewalld",
-    "domain": "Configure firewall settings with firewalld, including custom services",
-    "hosts": [
-      "servera"
-    ],
-    "description": "Um coletor de métricas interno fictício precisa de uma regra de firewall dedicada, e uma segunda porta avulsa também precisa ser liberada -- ambas de forma permanente.",
-    "instructions": [
-      "Crie um serviço customizado do firewalld chamado 'coletor-noturno', usando a porta TCP 9090, com uma descrição.",
-      "Adicione o serviço 'coletor-noturno' à zona padrão do firewalld, de forma permanente (--permanent).",
-      "Libere também a porta TCP 9191 diretamente (sem usar um serviço) na zona padrão, também de forma permanente.",
-      "Recarregue o firewalld (firewall-cmd --reload) para que a configuração permanente passe a valer em runtime também."
-    ],
-    "warning": "Toda alteração deve ser feita com --permanent e depois recarregada -- alterações só em runtime (sem --permanent) não sobrevivem a um reload/reboot e não serão aceitas pela correção.",
-    "solve_target": "servera",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva na servera. Os comandos lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "nfs-autofs-01",
-    "number": 9,
-    "title": "Compartilhamento NFS com automontagem via autofs",
-    "domain": "Manage layered storage / NFS network file systems",
-    "hosts": [
-      "servera",
-      "serverb"
-    ],
-    "description": "Exporte um diretório via NFS em servera e monte-o automaticamente por demanda em serverb usando autofs.",
-    "instructions": [
-      "Em servera: crie /export/dados-equipe e exporte-o via NFS (somente leitura) para a rede do lab, liberando o serviço nfs no firewalld.",
-      "Em serverb: configure autofs para montar servera:/export/dados-equipe automaticamente em /mnt/dados-equipe ao ser acessado.",
-      "Confirme que acessar /mnt/dados-equipe em serverb dispara a montagem sob demanda."
-    ],
-    "warning": "Exercício multi-host: resolva primeiro em servera (export), depois em serverb (autofs), antes de rodar lab grade.",
-    "solve_target": "servera (exporta) e serverb (automonta)",
-    "solve_method": "ssh",
-    "solve_command": "ssh servera",
-    "solve_note": "Resolva primeiro em servera, depois em serverb. lab start/grade/finish continuam sendo executados na workstation.",
-    "host": "servera"
-  },
-  {
-    "id": "shell-scripting-01",
-    "number": 10,
-    "title": "Script bash com validação de argumentos e processamento em loop",
-    "domain": "Write and run simple shell scripts using conditionals, loops, and correct exit codes",
+    "id": "examsim-full",
+    "number": 0,
+    "title": "Prova completa (24 questões)",
+    "host": "workstation",
     "hosts": [
       "workstation"
     ],
-    "description": "Escreva um script bash reutilizável que processa uma lista de nomes vinda de um arquivo, validando a chamada e produzindo um pequeno relatório.",
+    "description": "Simulado completo no estilo EX200: 24 questões em servera e serverb, corrigidas só no finish.",
     "instructions": [
-      "Crie o script executável ~/scripts/relatorio-nomes.sh (o diretório ~/scripts/ já existe, criado pelo lab start).",
-      "Se o script for chamado sem nenhum argumento, ele deve imprimir uma mensagem de uso em stderr e terminar com código de saída 1, sem processar nada.",
-      "Se o argumento passado não for um arquivo existente, o script deve imprimir uma mensagem de erro em stderr e terminar com código de saída 1.",
-      "Se o argumento for um arquivo válido, o script deve ler cada linha não vazia como um nome e imprimir 'Processando: <nome>' para cada um, na ordem em que aparecem no arquivo.",
-      "Ao final do processamento bem-sucedido, o script deve imprimir uma última linha EXATAMENTE no formato 'Total: N' (onde N é a quantidade de nomes processados) e terminar com código de saída 0.",
-      "Um arquivo de teste já está disponível em ~/scripts/dados-nomes.txt (criado pelo lab start) para você testar o script."
+      "Na workstation: lab start examsim-full (prepara as 24 questões e gera ~/examsim-full/enunciado.txt).",
+      "Resolva as questões na servera e na serverb; tempo de referência 3 horas.",
+      "lab grade examsim-full é recusado de propósito: a correção acontece só no finish.",
+      "Ao terminar: lab finish examsim-full (corrige, salva ~/examsim-full/resultado-*.txt e limpa o ambiente)."
     ],
-    "warning": "A linha final deve ser exatamente 'Total: N' (maiúsculas/minúsculas e espaçamento importam) -- é isso que o grade.sh procura para confirmar o resultado.",
-    "solve_target": "workstation",
+    "warning": "O start zera os discos de prática de 1 GiB e 6 GiB da serverb e troca a credencial de root dela (restaurada no finish). Não rode labs avulsos durante a prova. Referência de aprovação: 17/24.",
+    "solve_target": "servera e serverb (a partir da workstation · 192.168.56.10)",
     "solve_method": "console",
-    "solve_command": "N/A -- execute localmente na workstation, como o usuário student",
-    "solve_note": "Diferente dos outros exercícios, este roda inteiramente na workstation, como o usuário student -- não há SSH para outro host aqui.",
-    "host": "workstation"
+    "solve_command": "",
+    "solve_note": "Leia o enunciado em ~/examsim-full/enunciado.txt na workstation e resolva cada questão no host indicado.",
+    "exam_limit_minutes": 180,
+    "grade": false
+  },
+  {
+    "id": "examsim-dinamico",
+    "number": 0,
+    "title": "Exame dinâmico (24 questões sorteadas)",
+    "host": "workstation",
+    "hosts": [
+      "workstation"
+    ],
+    "description": "Exame no estilo EX200 sorteado a cada execução: 24 questões em servera e serverb, no mínimo 2 por domínio e o restante pelos pesos do EX200 v10. O painel mostra as questões da prova em andamento.",
+    "instructions": [
+      "Na workstation: lab start examsim-dinamico (sorteia a prova, prepara os hosts e grava ~/examsim-dinamico/enunciado.txt).",
+      "As questões sorteadas aparecem neste painel; resolva-as na servera e na serverb. Tempo de referência: 3 horas.",
+      "lab grade examsim-dinamico é recusado de propósito: a correção acontece só no finish.",
+      "Ao terminar: lab finish examsim-dinamico (corrige, salva ~/examsim-dinamico/resultado-*.txt e limpa o ambiente)."
+    ],
+    "warning": "Cada start sorteia uma prova nova. Não rode labs avulsos nem o examsim-full durante a prova. Algumas provas incluem a recuperação de root da serverb, que exige o console (virsh console rhcsa-lab-serverb). Referência de aprovação: 70% (17/24).",
+    "solve_target": "servera e serverb (a partir da workstation · 192.168.56.10)",
+    "solve_method": "console",
+    "solve_command": "",
+    "solve_note": "Leia as questões sorteadas neste painel (ou em ~/examsim-dinamico/enunciado.txt na workstation) e resolva cada uma no host indicado.",
+    "exam_limit_minutes": 180,
+    "grade": false,
+    "dynamic": true
+  },
+  {
+    "id": "examsim-flatpak",
+    "number": 1,
+    "title": "Flatpak: remote e aplicação",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Adicione um repositório Flatpak de sistema e instale uma aplicação a partir dele.",
+    "instructions": [
+      "Adicione o remote de sistema examrepo apontando para http://flatpak.lab.example.com:8091/myrepo.flatpakrepo.",
+      "Instale a aplicação com.vscodium.codium em nível de sistema a partir de examrepo.",
+      "Confirme com flatpak remotes e flatpak list."
+    ],
+    "warning": "Use o nome flatpak.lab.example.com (o start garante a entrada em /etc/hosts); por IP o mirror responde 404.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-network",
+    "number": 2,
+    "title": "Rede e hostname",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Configure a interface de prática sem perder o acesso de gerenciamento.",
+    "instructions": [
+      "Defina o hostname primary.net1.example.com.",
+      "Configure ens19 com IP 192.168.56.91/24, gateway 192.168.56.1 e DNS válido (DNS do lab: 192.168.56.1).",
+      "Garanta a configuração persistente e conectividade com o gateway pela ens19."
+    ],
+    "warning": "Não altere ens18: ela mantém o SSH de gerenciamento em 192.168.56.20. A rede do vídeo foi adaptada à rede do lab.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-repo-node1",
+    "number": 3,
+    "title": "Repositórios · servera",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Disponibilize BaseOS e AppStream no primeiro servidor.",
+    "instructions": [
+      "Configure repositórios persistentes para http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS e http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream.",
+      "Valide a instalação de pacotes a partir desses repositórios, não apenas dos repositórios CDN."
+    ],
+    "warning": "Use a porta 8091 do mirror da sala (servido pela workstation). O grade pode testar uma instalação real de pacote.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-selinux-httpd",
+    "number": 4,
+    "title": "HTTP e SELinux",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Corrija o serviço HTTP na porta não padrão 82.",
+    "instructions": [
+      "Faça o httpd servir o conteúdo esperado em http://localhost:82/file1.",
+      "Mantenha SELinux funcionando e preserve o contexto padrão de /var/www/html.",
+      "Restaure o contexto padrão de policy do arquivo /var/www/html/file1, que inicia propositalmente como user_home_t.",
+      "Habilite o serviço no boot e mantenha-o ativo."
+    ],
+    "warning": "O start prepara uma falha proposital de SELinux; não desabilite o SELinux para contorná-la.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-grupos",
+    "number": 5,
+    "title": "Usuários e grupos",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Crie as contas e as associações de grupo solicitadas.",
+    "instructions": [
+      "Crie o grupo sysadmin e os usuários natasha, harry e sarah.",
+      "natasha e harry devem ter sysadmin como grupo secundário.",
+      "sarah não deve pertencer a sysadmin e não deve ter shell interativo.",
+      "Defina para as três contas a senha de exercício especificada no enunciado da wiki."
+    ],
+    "warning": "Credenciais não são publicadas neste painel; consulte o enunciado original no Obsidian.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-dir-colaborativo",
+    "number": 6,
+    "title": "Diretório colaborativo",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Restrinja o diretório compartilhado e preserve a herança de grupo.",
+    "instructions": [
+      "Crie /common/admin com grupo sysadmin.",
+      "Permita leitura e gravação somente ao dono e ao grupo; outros não devem ter acesso.",
+      "Garanta que arquivos criados no diretório herdem o grupo sysadmin."
+    ],
+    "warning": "Verifique as permissões e a herança com um arquivo novo, não apenas o grupo do diretório.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-cron",
+    "number": 7,
+    "title": "Agendamentos com cron",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Configure os dois agendamentos nos usuários corretos.",
+    "instructions": [
+      "natasha: execute /bin/echo hello diariamente às 14:23, na hora local.",
+      "harry: execute /usr/bin/logger com a mensagem EX200 in progress a cada três minutos."
+    ],
+    "warning": "Os agendamentos pertencem aos usuários natasha e harry, não ao crontab de root.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-backup",
+    "number": 8,
+    "title": "Backup compactado",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Crie um arquivo tar com compressão bzip2 de /etc.",
+    "instructions": [
+      "Salve o backup de /etc em /home/backup.tar.bz2.",
+      "Verifique a integridade bzip2 e a presença dos arquivos originais no tar."
+    ],
+    "warning": "O avaliador confere conteúdo e formato, não apenas a extensão do arquivo.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-ntp",
+    "number": 9,
+    "title": "Sincronização de horário",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Configure o chrony como cliente do servidor do laboratório.",
+    "instructions": [
+      "Configure classroom.example.com como fonte em chrony.conf.",
+      "Mantenha chronyd ativo e habilitado no boot.",
+      "Confirme a fonte usando chronyc sources."
+    ],
+    "warning": "classroom.example.com é resolvido para a workstation (infraestrutura da sala do lab), não para a rede fictícia do vídeo.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-find-simone",
+    "number": 10,
+    "title": "Arquivos de Simone",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Localize e copie os arquivos pertencentes ao usuário solicitado.",
+    "instructions": [
+      "Localize os arquivos do usuário Simone preparados pelo lab.",
+      "Copie-os para /root/found preservando os arquivos originais."
+    ],
+    "warning": "Linux diferencia maiúsculas de minúsculas. Confira o nome da conta preparada pelo start.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-find-strato",
+    "number": 11,
+    "title": "Busca por conteúdo",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Extraia as ocorrências de strato do dicionário.",
+    "instructions": [
+      "Localize as linhas contendo strato em /usr/share/dict/words.",
+      "Salve exatamente as ocorrências em /searchfile."
+    ],
+    "warning": "Não acrescente cabeçalhos nem mensagens ao arquivo de resultado.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-autofs-remoteuser2",
+    "number": 12,
+    "title": "NFS e automount",
+    "host": "workstation → servera",
+    "hosts": [
+      "servera",
+      "workstation"
+    ],
+    "description": "Automonte o home NFS de remoteuser2 no cliente.",
+    "instructions": [
+      "Use o export /ourhome/remoteuser2 de workstation.lab.example.com (192.168.56.10).",
+      "Configure autofs em servera para montar o home em /home/remoteuser2 sob demanda.",
+      "Garanta que o diretório esteja acessível e gravável."
+    ],
+    "warning": "Multi-host: rode start, grade e finish na workstation. A conclusão exige aprovação do cliente e do servidor NFS. O grade faz uma escrita temporária de teste.",
+    "solve_target": "servera (cliente autofs) · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Configure o cliente autofs na servera. A workstation (192.168.56.10) atua como servidor NFS e é preparada e avaliada automaticamente pelo dispatcher."
+  },
+  {
+    "id": "examsim-user-barry",
+    "number": 13,
+    "title": "Usuário com UID fixo",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Crie barry com UID definido pelo enunciado.",
+    "instructions": [
+      "Crie o usuário barry com UID 2112.",
+      "Defina a senha de exercício indicada no enunciado original da wiki."
+    ],
+    "warning": "O painel oculta valores de senhas. Consulte o enunciado no Obsidian.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-script-suid-umask",
+    "number": 14,
+    "title": "Script e umask",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Automatize uma busca e ajuste as permissões padrão de alex.",
+    "instructions": [
+      "Crie o script executável /usr/local/bin/newsearch.",
+      "Busque sob /usr os arquivos SUID entre 30k e 50k e salve a lista em /root/myoutput.",
+      "Configure o umask persistente de alex para novos arquivos r--r--r-- e novos diretórios r-xr-xr-x."
+    ],
+    "warning": "O grade executa newsearch e cria arquivos temporários para verificar o umask.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-timer-acl",
+    "number": 15,
+    "title": "Timer systemd e ACL",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Agende o script de log e configure controle de acesso fino.",
+    "instructions": [
+      "Instale logger usando o timer.repo do laboratório (mirror http://content.example.com:8091/timer-repo/).",
+      "Ajuste /usr/local/bin/logger para registrar em /var/tmp/ex200 e salvar saída em /root/lookup_directory/ex200.",
+      "Crie e habilite o serviço systemd e um timer executado a cada minuto.",
+      "Copie /etc/fstab para /var/tmp/fstab, com dono root:root e sem execução para ninguém.",
+      "Conceda leitura e escrita a natasha, nenhum acesso a harry e leitura aos demais usuários."
+    ],
+    "warning": "ACL default não existe em arquivo regular; a permissão de outros cobre os demais usuários atuais e futuros.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-rootpw-recover-node2",
+    "number": 16,
+    "title": "Recuperação de root",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Pratique a recuperação de acesso administrativo pelo console.",
+    "instructions": [
+      "Abra o console da serverb (virsh console rhcsa-lab-serverb ou virt-viewer rhcsa-lab-serverb, no host libvirt).",
+      "Recupere o acesso e defina a senha de exercício do enunciado original.",
+      "Após o boot, confirme SELinux em Enforcing, configuração persistente e contextos corretos nos arquivos de contas."
+    ],
+    "warning": "Exige console e reboot; faça somente quando estiver pronto. O start é informativo. Não altere senhas de outros hosts. O dashboard não reinicia máquinas.",
+    "solve_target": "console da serverb (virsh console rhcsa-lab-serverb) · 192.168.56.30",
+    "solve_method": "console",
+    "solve_command": "",
+    "solve_note": "Execute a recuperação no console da serverb (virsh console rhcsa-lab-serverb ou virt-viewer, no host libvirt). Não tente resolver esta tarefa por SSH. Os comandos lab start, grade e finish continuam na workstation."
+  },
+  {
+    "id": "examsim-repo-node2",
+    "number": 17,
+    "title": "Repositórios · serverb",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Disponibilize BaseOS e AppStream no segundo servidor.",
+    "instructions": [
+      "Configure repositórios persistentes para http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS e http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream.",
+      "Verifique que pacotes podem ser instalados a partir desses repositórios."
+    ],
+    "warning": "Repita a configuração em serverb. Os repositórios de servera não configuram automaticamente este host.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-tuned",
+    "number": 18,
+    "title": "Perfil de desempenho",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Ative o perfil tuned recomendado para o sistema.",
+    "instructions": [
+      "Consulte o perfil recomendado pelo tuned.",
+      "Configure o perfil ativo para corresponder ao recomendado."
+    ],
+    "warning": "O avaliador compara o perfil ativo com a recomendação real da VM.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-swap",
+    "number": 19,
+    "title": "Swap persistente",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Configure uma partição swap de aproximadamente 250 MB.",
+    "instructions": [
+      "Use somente o disco de prática preparado pelo start.",
+      "Crie e ative uma partição swap de aproximadamente 250 MB.",
+      "Garanta a ativação persistente no próximo boot."
+    ],
+    "warning": "Start/finish manipulam discos de prática. Nunca use o disco do sistema. Não rode simultaneamente com os labs LVM.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-lvm-mydatabase",
+    "number": 20,
+    "title": "LVM para database",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Crie VG e LV com tamanhos especificados e montagem persistente.",
+    "instructions": [
+      "No disco de prática, crie o VG myvg com extents físicos de 8 MiB.",
+      "Crie o LV mydatabase com 50 extents e formate-o em vfat.",
+      "Monte o volume em /database e torne a montagem persistente."
+    ],
+    "warning": "Não use o disco do sistema. Finalize o lab de swap antes de preparar este exercício; eles reutilizam discos.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-script-args",
+    "number": 21,
+    "title": "Shell script com argumentos",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Escreva um script com validação de argumentos, laço for e códigos de saída.",
+    "instructions": [
+      "Crie o script executável /usr/local/bin/userinfo com shebang.",
+      "Sem argumentos: mensagem de uso em stderr e código de saída 1.",
+      "Para cada usuário recebido (laço for): imprima usuario:uid:home se existir; senão, escreva 'usuario: inexistente' em stderr.",
+      "Termine com código 0 se todos existirem, ou 2 se algum não existir."
+    ],
+    "warning": "O grade executa o script com casos reais (sem argumento, válido, válido+inválido) e confere stdout, stderr e código de saída.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-lvm-resize-home",
+    "number": 22,
+    "title": "Redimensionar LV home",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Redimensione o volume preservando o sistema de arquivos e seus dados.",
+    "instructions": [
+      "Redimensione myvg/home para aproximadamente 152 MB (38 extents); tolerância do exercício: 145–155 MB.",
+      "Mantenha o filesystem acessível e o arquivo teste-examsim22.txt preservado.",
+      "Neste lab, a montagem de prática fica em /mnt/examsim-home, não no /home real."
+    ],
+    "warning": "Somente no LV preparado por este lab. Não redimensione o /home do sistema.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-tuned-servera",
+    "number": 23,
+    "title": "Instalar e ativar tuned",
+    "host": "servera",
+    "hosts": [
+      "servera"
+    ],
+    "description": "Instale o tuned e aplique um perfil específico.",
+    "instructions": [
+      "Instale o pacote tuned (depende dos repositórios da tarefa 3).",
+      "Habilite e inicie o serviço tuned.",
+      "Ative o perfil throughput-performance."
+    ],
+    "warning": "O start remove o tuned da servera. Diferente da tarefa 18 (serverb), aqui o perfil é fixo, não o recomendado.",
+    "solve_target": "servera · 192.168.56.20",
+    "solve_method": "ssh",
+    "solve_command": "ssh servera",
+    "solve_note": "Execute a solução na servera. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-vgextend",
+    "number": 24,
+    "title": "Estender VG e LV (vgextend)",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Aumente o volume lógico adicionando um novo PV ao grupo de volumes.",
+    "instructions": [
+      "O VG vg_data não tem espaço livre; crie uma partição nova no disco de prática de 6 GiB.",
+      "Transforme-a em PV e adicione-a a vg_data com vgextend.",
+      "Estenda vg_data/lv_data para 600 MiB (tolerância 590–610) e cresça o XFS.",
+      "Mantenha /mnt/examsim-data montado, persistente no fstab e com teste-examsim24.txt preservado."
+    ],
+    "warning": "Start/finish zeram o disco de prática de 6 GiB (também usado por storage-review/lvm-review). O XFS do RHEL 10 exige no mínimo 300 MB, por isso o LV parte de 300 MiB.",
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
+  },
+  {
+    "id": "examsim-treino-storage",
+    "number": 25,
+    "title": "Treino cronometrado: swap + LVM + timer",
+    "host": "serverb",
+    "hosts": [
+      "serverb"
+    ],
+    "description": "Treino a frio dos pontos que travaram na prova de 23/09. Meta: tudo em até 10 minutos, consultando só o man. O cronômetro começa no lab start e o grade mostra o tempo.",
+    "instructions": [
+      "No disco de prática de 6 GiB (o start mostra o nome; está sem tabela de partições), crie uma partição de 512 MiB e ative-a como swap de forma persistente no /etc/fstab.",
+      "Crie outra partição de 1 GiB e o VG vgtreino com PE de 16 MiB.",
+      "Crie o LV lvtreino com 20 extents, formate em ext4 e monte em /treino de forma persistente.",
+      "Crie treino-marca.service executando /usr/local/bin/treino-marca.sh (já existe) e treino-marca.timer a cada 5 minutos via OnCalendar, habilitado e ativo.",
+      "Antes do grade: swapon -a, mount -a e findmnt --verify. Ajuda offline: man vgcreate (/EXAMPLES), man systemd.time, systemd-analyze calendar e /usr/lib/systemd/system/*.timer."
+    ],
+    "warning": "Start/finish zeram o disco de prática de 6 GiB (também usado por storage-review, lvm-review e vgextend). Não rode durante o examsim-full. O histórico de tempos fica em /var/lib/rhcsa-treino/historico na serverb e sobrevive ao finish.",
+    "exam_limit_minutes": 10,
+    "solve_target": "serverb · 192.168.56.30",
+    "solve_method": "ssh",
+    "solve_command": "ssh serverb",
+    "solve_note": "Execute a solução na serverb. Os comandos lab start, grade e finish continuam sendo executados na workstation."
   }
 ]

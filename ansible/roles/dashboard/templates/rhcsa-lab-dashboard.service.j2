@@ -1,5 +1,5 @@
 [Unit]
-Description=RHCSA lab dashboard (read-only, rede privada do lab)
+Description=RHCSA lab dashboard (read-only LAN)
 After=network-online.target
 Wants=network-online.target
 
@@ -8,7 +8,9 @@ Type=simple
 User={{ lab_student_user }}
 Group={{ lab_student_user }}
 WorkingDirectory=/opt/rhcsa-lab-dashboard
-ExecStart=/usr/bin/python3 /opt/rhcsa-lab-dashboard/backend.py --host {{ dashboard_bind_host | default('0.0.0.0') }} --port {{ dashboard_port }} --data-dir /var/lib/rhcsa-lab-dashboard --catalog /opt/rhcsa-lab-dashboard/catalog.json --static-dir /opt/rhcsa-lab-dashboard
+ExecStart=/usr/bin/python3 /opt/rhcsa-lab-dashboard/backend.py --host {{ dashboard_bind_host }} --port {{ dashboard_port }} --data-dir /var/lib/rhcsa-lab-dashboard --catalog /opt/rhcsa-lab-dashboard/catalog.json --static-dir /opt/rhcsa-lab-dashboard
+# RHCSA_LAB_ROOT_PASSWORD=<senha de root do lab>, para o painel mascarar a credencial (chmod 600, fora do git)
+EnvironmentFile=-/etc/rhcsa-lab-dashboard.env
 Restart=on-failure
 RestartSec=3
 StateDirectory=rhcsa-lab-dashboard

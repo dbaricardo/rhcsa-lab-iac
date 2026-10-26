@@ -30,7 +30,7 @@ deploy-offline: $(IMAGE) infra provision-offline ## TUDO sem subscription (repos
 check-env: ## Valida .env, libvirt, terraform, virt-install, ansible
 	@bash scripts/check-env.sh
 
-catalog: ## Gera labs/catalog.json a partir de labs/*/meta.json
+catalog: ## Valida labs/catalog.json (27 entradas, escrito à mão como no homelab)
 	@python3 scripts/build-catalog.py
 
 $(IMAGE):
@@ -45,12 +45,15 @@ infra: catalog ## Cria/atualiza rede, discos e as 3 VMs via Terraform (sem Ansib
 	@$(TF) init -input=false
 	@$(TF) apply -input=false -auto-approve
 
+# Nos dois modos a ISO é servida pelo host: é dela que o role `classroom`
+# monta o mirror parcial BaseOS/AppStream de content.example.com:8091.
 provision: catalog ## Roda o Ansible (registra a subscription se RHSM_* estiver no .env)
-	@$(PLAYBOOK)
+	@bash scripts/offline-repo.sh start
+	@$(PLAYBOOK) -e lab_iso_url=$(OFFLINE_URL)
 
 provision-offline: catalog ## Roda o Ansible SEM subscription (repos servidos da ISO)
 	@bash scripts/offline-repo.sh start
-	@$(PLAYBOOK) -e lab_offline_repo_url=$(OFFLINE_URL)
+	@$(PLAYBOOK) -e lab_offline_repo_url=$(OFFLINE_URL) -e lab_iso_url=$(OFFLINE_URL)
 
 status: ## Mostra o estado das VMs e a URL do dashboard
 	@virsh -c qemu:///system list --all | grep -E 'Id|---|rhcsa-lab' || true
@@ -79,7 +82,7 @@ lint: ## terraform fmt/validate + ansible-lint + shellcheck
 	@$(TF) fmt -check -recursive
 	@$(TF) init -backend=false -input=false >/dev/null && $(TF) validate
 	@ansible-lint ansible/ || true
-	@shellcheck labs/*/*.sh scripts/*.sh image/*.sh tests/*/*.sh || true
+	@find labs scripts image tests ansible/roles -name '*.sh' -print0 | xargs -0 shellcheck -S warning || true
 
 test-dashboard: ## Roda a suíte de testes do dashboard portado
 	@cd ansible/roles/dashboard/files && python3 -m pytest tests -v

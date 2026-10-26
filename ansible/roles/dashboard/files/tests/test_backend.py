@@ -1,8 +1,14 @@
 """Local fixtures only: these tests are not evidence of real lab grades."""
+import paths  # noqa: F401  (põe backend/ai_review no sys.path)
+import os
 import importlib.util
 import unittest
+from unittest import mock
 import tempfile
 from pathlib import Path
+
+# Senha real de root do lab: so' vem do ambiente (RHCSA_LAB_ROOT_PASSWORD), nunca do codigo.
+ROOT_PW = os.environ.get('RHCSA_LAB_ROOT_PASSWORD', '')
 
 
 CATALOG = [
@@ -117,7 +123,7 @@ class HTTPTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             catalog = Path(tmp, 'catalog.json')
             catalog.write_text(json.dumps(CATALOG))
-            proc = subprocess.Popen([sys.executable, '-u', 'backend.py', '--host', '127.0.0.1',
+            proc = subprocess.Popen([sys.executable, '-u', str(paths.FILES / 'backend.py'), '--host', '127.0.0.1',
                                      '--port', '0', '--data-dir', str(Path(tmp, 'data')),
                                      '--catalog', str(catalog), '--static-dir', tmp],
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -232,6 +238,112 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(event['status'], 'failed')
         self.assertEqual(event['failure_reasons'], [
             'porta 82 nao esta associada a http_port_t', '[REDACTED]'])
+
+
+def dynamic_manifest(**over):
+    manifest = {
+        'id': 'dyn-20261004T210000Z', 'state': 'open', 'seed': 42, 'started_at': '2026-10-04T21:00:00Z',
+        'count': 2, 'minimum': 1, 'pass_mark': 2,
+        'domains': [{'n': 1, 'name': 'Software Management', 'quota': 1}, {'n': 4, 'name': 'Storage', 'quota': 1}],
+        'questions': [
+            {'q': 1, 'id': 'examsim-flatpak', 'kind': 'legacy', 'title': 'Flatpak', 'domain': 1,
+             'domain_name': 'Software Management', 'category': 'flatpak', 'host': 'servera', 'console': False,
+             'statement': 'Adicione o remote examrepo.'},
+            {'q': 2, 'id': 'examsim-swap', 'kind': 'legacy', 'title': 'Swap', 'domain': 4,
+             'domain_name': 'Storage', 'category': 'swap', 'host': 'serverb', 'console': False,
+             'statement': 'Crie a swap.'}]}
+    manifest.update(over)
+    return manifest
+
+
+class DynamicExamTests(unittest.TestCase):
+    def setUp(self):
+        import json
+        self.json = json
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name) / 'dinamico'
+        (self.dir / 'history').mkdir(parents=True)
+
+    def store(self):
+        return backend().ProgressStore(self.tmp.name, CATALOG)
+
+    def write(self, name, payload):
+        path = self.dir / name
+        path.write_text(payload if isinstance(payload, str) else self.json.dumps(payload), encoding='utf-8')
+        return path
+
+    def test_state_has_no_dynamic_exam_until_one_is_published(self):
+        self.assertIsNone(self.store().state()['dynamic_exam'])
+
+    def test_open_exam_is_served_from_current_json(self):
+        self.write('current.json', dynamic_manifest())
+        exam = self.store().state()['dynamic_exam']
+        self.assertEqual(exam['state'], 'open')
+        self.assertEqual([q['id'] for q in exam['questions']], ['examsim-flatpak', 'examsim-swap'])
+        self.assertNotIn('ok', exam['questions'][0])
+
+    def test_without_an_open_exam_the_latest_closed_one_is_shown_with_results(self):
+        import os
+        old = self.write('history/old.json', dynamic_manifest(id='dyn-old', state='closed'))
+        new = self.write('history/new.json', dynamic_manifest(
+            id='dyn-new', state='closed', finished_at='2026-10-04T22:00:00Z',
+            score={'passed': 1, 'total': 2, 'pass_mark': 2, 'percent': 50, 'approved': False},
+            by_domain={'1': {'passed': 1, 'total': 1}, '4': {'passed': 0, 'total': 1}}))
+        os.utime(old, (1, 1))
+        os.utime(new, (2, 2))
+        exam = self.store().state()['dynamic_exam']
+        self.assertEqual(exam['id'], 'dyn-new')
+        self.assertEqual(exam['score']['passed'], 1)
+        self.assertEqual(exam['by_domain']['4'], {'passed': 0, 'total': 1})
+
+    def test_open_exam_wins_over_history(self):
+        self.write('history/new.json', dynamic_manifest(id='dyn-closed', state='closed'))
+        self.write('current.json', dynamic_manifest(id='dyn-open'))
+        self.assertEqual(self.store().state()['dynamic_exam']['id'], 'dyn-open')
+
+    def test_malformed_or_hostile_files_never_break_the_state_endpoint(self):
+        for payload in ('{not json', '[]', '{"state": "open"}', self.json.dumps(dynamic_manifest(state='hacked')),
+                        self.json.dumps(dynamic_manifest(questions='x')),
+                        self.json.dumps(dynamic_manifest(seed=True)),
+                        self.json.dumps(dynamic_manifest(count=-1))):
+            with self.subTest(payload=payload[:40]):
+                self.write('current.json', payload)
+                self.assertIsNone(self.store().state()['dynamic_exam'])
+
+    def test_oversized_manifest_is_ignored(self):
+        self.write('current.json', ' ' * (backend().DYNAMIC_MAX_BYTES + 1))
+        self.assertIsNone(self.store().state()['dynamic_exam'])
+
+    def test_unknown_fields_are_dropped_and_exercise_credentials_are_redacted(self):
+        manifest = dynamic_manifest(extra_field='<script>alert(1)</script>')
+        manifest['questions'][0]['statement'] = 'Use a senha atenorth e a dummy-root-pw.'
+        manifest['questions'][0]['params'] = {'SECRET': 'x'}
+        with mock.patch.dict(os.environ, {'RHCSA_LAB_ROOT_PASSWORD': 'dummy-root-pw'}):
+            exam = backend().clean_dynamic_exam(manifest)
+        self.assertNotIn('extra_field', exam)
+        self.assertNotIn('params', exam['questions'][0])
+        text = exam['questions'][0]['statement']
+        self.assertNotIn('atenorth', text)
+        self.assertNotIn('dummy-root-pw', text)
+        self.assertIn('[REDACTED]', text)
+
+    def test_dynamic_text_is_bounded(self):
+        manifest = dynamic_manifest()
+        manifest['questions'][0]['statement'] = 'x' * 50000
+        self.assertEqual(len(backend().clean_dynamic_exam(manifest)['questions'][0]['statement']), 4000)
+
+    def test_http_state_exposes_the_dynamic_exam_read_only(self):
+        import threading
+        import urllib.request
+        self.write('current.json', dynamic_manifest())
+        server = backend().create_server('127.0.0.1', 0, self.store(), self.tmp.name)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        with urllib.request.urlopen(f'http://127.0.0.1:{server.server_port}/api/state') as response:
+            data = self.json.loads(response.read())
+        self.assertEqual(data['dynamic_exam']['id'], 'dyn-20261004T210000Z')
 
 
 if __name__ == '__main__':

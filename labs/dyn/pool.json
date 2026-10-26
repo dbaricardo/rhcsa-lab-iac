@@ -1,0 +1,5692 @@
+{
+ "version": 1,
+ "domains": {
+  "1": {
+   "name": "Software Management",
+   "weight": 12
+  },
+  "2": {
+   "name": "System Setup & Boot",
+   "weight": 11
+  },
+  "3": {
+   "name": "Users, Groups & Permissions",
+   "weight": 12
+  },
+  "4": {
+   "name": "Storage & Filesystems",
+   "weight": 19
+  },
+  "5": {
+   "name": "Network & DNS",
+   "weight": 10
+  },
+  "6": {
+   "name": "Systemd, Services & Processes",
+   "weight": 12
+  },
+  "7": {
+   "name": "Security - SELinux & Firewall",
+   "weight": 14
+  },
+  "8": {
+   "name": "Automation & Scripting",
+   "weight": 10
+  }
+ },
+ "groups": {
+  "storage-serverb": {
+   "host": "serverb",
+   "order": 21,
+   "start": "storage-start",
+   "finish": "storage-finish",
+   "conflicts": []
+  },
+  "rootpw-serverb": {
+   "host": "serverb",
+   "order": 20,
+   "start": "rootpw-start",
+   "finish": "rootpw-finish",
+   "conflicts": []
+  }
+ },
+ "tasks": [
+  {
+   "id": "examsim-flatpak",
+   "kind": "legacy",
+   "title": "Flatpak: remote examrepo + codium",
+   "domain": 1,
+   "category": "flatpak",
+   "hosts": [
+    "servera"
+   ],
+   "order": 16,
+   "conflicts": [
+    "flatpak@servera"
+   ],
+   "console": false,
+   "statement": "Flatpak — Adicione um remote Flatpak de SISTEMA chamado examrepo usando http://flatpak.lab.example.com:8091/myrepo.flatpakrepo e instale dele, em nível de sistema, o aplicativo com.vscodium.codium."
+  },
+  {
+   "id": "examsim-network",
+   "kind": "legacy",
+   "title": "Rede e hostname",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera"
+   ],
+   "order": 18,
+   "conflicts": [
+    "hostname@servera",
+    "nic-ens19@servera"
+   ],
+   "console": false,
+   "statement": "Rede — Configure o hostname primary.net1.example.com. Configure a interface ens19 com IP 192.168.56.91/24, gateway 192.168.56.1 e DNS 192.168.56.1, de forma persistente. NÃO altere a ens18 (gerência)."
+  },
+  {
+   "id": "examsim-repo-node1",
+   "kind": "legacy",
+   "title": "Repositórios BaseOS/AppStream (servera)",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera"
+   ],
+   "order": 5,
+   "conflicts": [
+    "repo@servera"
+   ],
+   "console": false,
+   "statement": "Repositórios — Configure repositórios persistentes: BaseOS    http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS AppStream http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream"
+  },
+  {
+   "id": "examsim-selinux-httpd",
+   "kind": "legacy",
+   "title": "SELinux: httpd na porta 82",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera"
+   ],
+   "order": 1,
+   "conflicts": [
+    "selinux-port@servera",
+    "selinux-mode@servera"
+   ],
+   "console": false,
+   "statement": "SELinux — O httpd deve servir na porta 82 (http://localhost:82/file1). Não desabilite o SELinux, não altere o contexto de /var/www/html, corrija o contexto de /var/www/html/file1 e deixe o serviço ativo e habilitado no boot."
+  },
+  {
+   "id": "examsim-grupos",
+   "kind": "legacy",
+   "title": "Grupo sysadmin e usuários",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera"
+   ],
+   "order": 9,
+   "conflicts": [],
+   "console": false,
+   "statement": "Usuários — Crie o grupo sysadmin. natasha e harry devem ter sysadmin como grupo secundário. sarah não pertence a sysadmin e não tem shell interativo. Senha das três: atenorth."
+  },
+  {
+   "id": "examsim-dir-colaborativo",
+   "kind": "legacy",
+   "title": "Diretório colaborativo /common/admin",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera"
+   ],
+   "order": 8,
+   "conflicts": [],
+   "console": false,
+   "statement": "Diretório colaborativo — Crie /common/admin com grupo sysadmin; dono e grupo leem e gravam, outros sem acesso; arquivos novos herdam o grupo."
+  },
+  {
+   "id": "examsim-cron",
+   "kind": "legacy",
+   "title": "Cron de natasha e harry",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera"
+   ],
+   "order": 7,
+   "conflicts": [],
+   "console": false,
+   "statement": "Cron — natasha: /bin/echo hello todo dia às 14:23 (hora local). harry: /usr/bin/logger \"EX200 in progress\" a cada 3 minutos."
+  },
+  {
+   "id": "examsim-backup",
+   "kind": "legacy",
+   "title": "Backup tar.bz2 de /etc",
+   "domain": 3,
+   "category": "essential_tools",
+   "hosts": [
+    "servera"
+   ],
+   "order": 10,
+   "conflicts": [],
+   "console": false,
+   "statement": "Backup — Crie /home/backup.tar.bz2 com o conteúdo de /etc (tar+bzip2)."
+  },
+  {
+   "id": "examsim-ntp",
+   "kind": "legacy",
+   "title": "NTP com chrony",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera"
+   ],
+   "order": 11,
+   "conflicts": [],
+   "console": false,
+   "statement": "NTP — Configure o chrony como cliente de classroom.example.com, com o chronyd ativo e habilitado."
+  },
+  {
+   "id": "examsim-find-simone",
+   "kind": "legacy",
+   "title": "Arquivos de Simone em /root/found",
+   "domain": 3,
+   "category": "essential_tools",
+   "hosts": [
+    "servera"
+   ],
+   "order": 12,
+   "conflicts": [],
+   "console": false,
+   "statement": "find — Copie todos os arquivos do usuário Simone para /root/found."
+  },
+  {
+   "id": "examsim-find-strato",
+   "kind": "legacy",
+   "title": "strato em /searchfile",
+   "domain": 3,
+   "category": "essential_tools",
+   "hosts": [
+    "servera"
+   ],
+   "order": 2,
+   "conflicts": [],
+   "console": false,
+   "statement": "grep — Salve em /searchfile todas as linhas de /usr/share/dict/words que contêm strato (sem cabeçalhos nem linhas extras)."
+  },
+  {
+   "id": "examsim-autofs-remoteuser2",
+   "kind": "legacy",
+   "title": "autofs do home de remoteuser2",
+   "domain": 4,
+   "category": "network_storage",
+   "hosts": [
+    "servera"
+   ],
+   "order": 3,
+   "conflicts": [
+    "autofs@servera"
+   ],
+   "console": false,
+   "statement": "autofs — O home de remoteuser2 é exportado por workstation.lab.example.com em /ourhome/remoteuser2. Configure o autofs no servera para montá-lo sob demanda em /home/remoteuser2, gravável pelo usuário.",
+   "extra_hosts": [
+    "localhost"
+   ]
+  },
+  {
+   "id": "examsim-user-barry",
+   "kind": "legacy",
+   "title": "Usuário barry UID 2112",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera"
+   ],
+   "order": 13,
+   "conflicts": [],
+   "console": false,
+   "statement": "Usuário — Crie barry com UID 2112 e senha atenorth."
+  },
+  {
+   "id": "examsim-script-suid-umask",
+   "kind": "legacy",
+   "title": "Script newsearch e umask de alex",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera"
+   ],
+   "order": 14,
+   "conflicts": [],
+   "console": false,
+   "statement": "Script + umask — Crie o executável /usr/local/bin/newsearch que localiza sob /usr os arquivos SUID entre 30k e 50k e grava a lista em /root/myoutput (execute-o). Configure para o usuário alex um umask persistente que gere arquivos r--r--r-- e diretórios r-xr-xr-x."
+  },
+  {
+   "id": "examsim-timer-acl",
+   "kind": "legacy",
+   "title": "Timer systemd e ACL",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera"
+   ],
+   "order": 6,
+   "conflicts": [],
+   "console": false,
+   "statement": "Timer + ACL — (a) Instale o pacote logger pelo repositório timer.repo (/etc/yum.repos.d/timer.repo). Ajuste /usr/local/bin/logger para registrar em /var/tmp/ex200 e gravar saída em /root/lookup_directory/ex200. Crie um serviço systemd para ele e um timer que o execute a cada minuto, habilitado e ativo. (b) Copie /etc/fstab para /var/tmp/fstab (root:root, ninguém com execução): natasha lê e grava, harry sem acesso nenhum, demais usuários (atuais e futuros) só leitura."
+  },
+  {
+   "id": "examsim-rootpw-recover-node2",
+   "kind": "legacy",
+   "title": "Recuperar acesso root (serverb)",
+   "domain": 2,
+   "category": "boot_recovery",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 20,
+   "conflicts": [
+    "rootpw@serverb",
+    "selinux-mode@serverb"
+   ],
+   "console": true,
+   "statement": "Root — Você não sabe a senha de root do serverb. Recupere o acesso pelo console (virsh console rhcsa-lab-serverb ou virt-viewer) e defina a senha de root como atenorth. Ao final o SELinux deve continuar Enforcing e sem arquivos com contexto errado.",
+   "group": "rootpw-serverb"
+  },
+  {
+   "id": "examsim-repo-node2",
+   "kind": "legacy",
+   "title": "Repositórios BaseOS/AppStream (serverb)",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 22,
+   "conflicts": [
+    "repo@serverb"
+   ],
+   "console": false,
+   "statement": "Repositórios — Configure no serverb os mesmos repositórios da Q03."
+  },
+  {
+   "id": "examsim-tuned",
+   "kind": "legacy",
+   "title": "tuned recomendado (serverb)",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 19,
+   "conflicts": [
+    "tuned@serverb"
+   ],
+   "console": false,
+   "statement": "tuned — Ative o perfil tuned RECOMENDADO para o serverb."
+  },
+  {
+   "id": "examsim-swap",
+   "kind": "legacy",
+   "title": "Swap persistente",
+   "domain": 4,
+   "category": "swap",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 21,
+   "conflicts": [
+    "disk-1g",
+    "disk-6g"
+   ],
+   "console": false,
+   "statement": "Swap — A partição @DISCO1@1 (~250 MiB) já existe. Transforme-a em swap e ative-a de forma persistente.",
+   "group": "storage-serverb"
+  },
+  {
+   "id": "examsim-lvm-mydatabase",
+   "kind": "legacy",
+   "title": "LVM myvg/mydatabase em /database",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 21,
+   "conflicts": [
+    "disk-1g",
+    "disk-6g"
+   ],
+   "console": false,
+   "statement": "LVM — No espaço livre de @DISCO6@, crie o VG myvg com PE de 8 MiB e o LV mydatabase com 50 extents, formatado em vfat e montado de forma persistente em /database.",
+   "group": "storage-serverb"
+  },
+  {
+   "id": "examsim-script-args",
+   "kind": "legacy",
+   "title": "Shell script userinfo",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera"
+   ],
+   "order": 15,
+   "conflicts": [],
+   "console": false,
+   "statement": "Shell script — Crie o executável /usr/local/bin/userinfo: - sem argumentos: mensagem de uso no stderr e sai com código 1; - para cada usuário recebido (laço for): se existir, imprime <usuario>:<uid>:<home> no stdout; se não existir, imprime \"<usuario>: inexistente\" no stderr e continua; - termina com código 2 se algum usuário não existia, senão 0. Ex.: userinfo root nobody  ->  root:0:/root  e  nobody:65534:/"
+  },
+  {
+   "id": "examsim-lvm-resize-home",
+   "kind": "legacy",
+   "title": "Resize de vg_home/home",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 21,
+   "conflicts": [
+    "disk-1g",
+    "disk-6g"
+   ],
+   "console": false,
+   "statement": "Resize — Redimensione o LV home do VG vg_home (montado em /mnt/examsim-home) para 152 MB (38 extents), sem perder os dados.",
+   "group": "storage-serverb",
+   "grade_env": "EXAMSIM_HOME_VG=vg_home"
+  },
+  {
+   "id": "examsim-tuned-servera",
+   "kind": "legacy",
+   "title": "tuned throughput-performance (servera)",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera"
+   ],
+   "order": 17,
+   "conflicts": [
+    "tuned@servera"
+   ],
+   "console": false,
+   "statement": "tuned — Instale o tuned, deixe o serviço ativo e habilitado no boot e ative o perfil throughput-performance."
+  },
+  {
+   "id": "examsim-vgextend",
+   "kind": "legacy",
+   "title": "vgextend de vg_data/lv_data",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "serverb"
+   ],
+   "order": 21,
+   "conflicts": [
+    "disk-1g",
+    "disk-6g"
+   ],
+   "console": false,
+   "statement": "vgextend — O LV lv_data do VG vg_data (xfs, /mnt/examsim-data) tem 300 MiB e o VG está sem espaço. Crie uma nova partição no espaço livre de @DISCO6@, adicione-a ao vg_data e estenda lv_data para 600 MiB com o filesystem acompanhando, sem perder os dados.",
+   "group": "storage-serverb"
+  },
+  {
+   "id": "dyn-boot-default-target",
+   "kind": "ported",
+   "title": "Set default systemd target",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "default-target@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set the default systemd target to {TARGET}. The change must persist across reboots. Do not reboot just to test it; verify with systemctl get-default.",
+   "params": {
+    "TARGET": {
+     "choice": [
+      "multi-user.target",
+      "graphical.target"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-journal-persistent",
+   "kind": "ported",
+   "title": "Persistent journal logs",
+   "domain": 2,
+   "category": "journalctl",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "journald@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the systemd journal is not keeping logs across reboots. Make the journal persistent: configure it in /etc/systemd/journald.conf (or a drop-in under journald.conf.d) and apply the change with systemctl."
+  },
+  {
+   "id": "dyn-journal-size",
+   "kind": "ported",
+   "title": "Journal size limits",
+   "domain": 2,
+   "category": "journalctl",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "journald@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: edit /etc/systemd/journald.conf so that SystemMaxUse={MAXUSE} and RuntimeMaxUse={RUNMAX}. The lines must be active (not commented). Restart systemd-journald and check journalctl --disk-usage.",
+   "params": {
+    "MAXUSE": {
+     "choice": [
+      "100M",
+      "200M",
+      "500M",
+      "1G"
+     ]
+    },
+    "RUNMAX": {
+     "choice": [
+      "50M",
+      "64M",
+      "128M",
+      "256M"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-hosts",
+   "kind": "ported",
+   "title": "Add an /etc/hosts entry",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: add a static name-resolution entry to /etc/hosts: IP {IP}, FQDN {FQDN}, short name {SHORT}. The name must resolve locally to that address.",
+   "param_sets": [
+    {
+     "IP": "192.168.50.21",
+     "FQDN": "appserver.example.com",
+     "SHORT": "appserver"
+    },
+    {
+     "IP": "192.168.50.22",
+     "FQDN": "dbserver.example.com",
+     "SHORT": "dbserver"
+    },
+    {
+     "IP": "192.168.50.23",
+     "FQDN": "webserver.lab.local",
+     "SHORT": "webserver"
+    },
+    {
+     "IP": "192.168.50.24",
+     "FQDN": "fileserver.corp.net",
+     "SHORT": "fileserver"
+    },
+    {
+     "IP": "192.168.50.25",
+     "FQDN": "monitor.example.com",
+     "SHORT": "monitor"
+    }
+   ]
+  },
+  {
+   "id": "dyn-net-hostname",
+   "kind": "ported",
+   "title": "Set the static hostname",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "hostname@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set the static hostname to {NEWNAME}. The change must persist across reboots (check hostnamectl and /etc/hostname).",
+   "params": {
+    "NEWNAME": {
+     "choice": [
+      "node2.lab.example.com",
+      "web1.lab.example.com",
+      "db1.lab.example.com",
+      "app3.lab.example.com",
+      "srv7.lab.example.com"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-selinux-bool",
+   "kind": "ported",
+   "title": "SELinux boolean (persistent)",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "selinux-bool@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set the SELinux boolean {BOOL} to {VALUE}. The change must survive a reboot.",
+   "param_sets": [
+    {
+     "BOOL": "httpd_can_network_connect",
+     "VALUE": "on"
+    },
+    {
+     "BOOL": "httpd_enable_homedirs",
+     "VALUE": "on"
+    },
+    {
+     "BOOL": "httpd_can_sendmail",
+     "VALUE": "on"
+    },
+    {
+     "BOOL": "ftpd_anon_write",
+     "VALUE": "on"
+    },
+    {
+     "BOOL": "nfs_export_all_rw",
+     "VALUE": "off"
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-port",
+   "kind": "ported",
+   "title": "SELinux port context",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "selinux-port@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: allow a service to listen on {PORT}/{PROTO} by giving that port the SELinux type {TYPE}. The change must be persistent. If the port is already assigned to another type, modify it instead of adding it.",
+   "param_sets": [
+    {
+     "PORT": "3131",
+     "PROTO": "tcp",
+     "TYPE": "http_port_t"
+    },
+    {
+     "PORT": "8888",
+     "PROTO": "tcp",
+     "TYPE": "http_port_t"
+    },
+    {
+     "PORT": "9090",
+     "PROTO": "tcp",
+     "TYPE": "http_port_t"
+    }
+   ]
+  },
+  {
+   "id": "dyn-fw-service",
+   "kind": "ported",
+   "title": "Firewall: allow a service",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: allow the {SERVICE} service in the firewalld zone {ZONE}. The rule must be permanent and active right now (reload firewalld).",
+   "params": {
+    "SERVICE": {
+     "choice": [
+      "http",
+      "https",
+      "ftp",
+      "smtp",
+      "mysql",
+      "postgresql",
+      "dns"
+     ]
+    },
+    "ZONE": {
+     "choice": [
+      "public",
+      "internal",
+      "work",
+      "home"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fw-port",
+   "kind": "ported",
+   "title": "Firewall: open a port",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: open port {PORT}/{PROTO} in the firewalld zone {ZONE}. The rule must be permanent and active right now (reload firewalld).",
+   "params": {
+    "ZONE": {
+     "choice": [
+      "public",
+      "internal",
+      "work",
+      "home"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "PORT": "8080",
+     "PROTO": "tcp"
+    },
+    {
+     "PORT": "8443",
+     "PROTO": "tcp"
+    },
+    {
+     "PORT": "3306",
+     "PROTO": "tcp"
+    },
+    {
+     "PORT": "5432",
+     "PROTO": "tcp"
+    },
+    {
+     "PORT": "9090",
+     "PROTO": "tcp"
+    },
+    {
+     "PORT": "5353",
+     "PROTO": "udp"
+    }
+   ]
+  },
+  {
+   "id": "dyn-part-gpt-create",
+   "kind": "ported",
+   "title": "Create a GPT partition",
+   "domain": 4,
+   "category": "partitioning",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a GPT partition table on @DISK@ with one {SIZE} MiB partition named '{PNAME}'. Use parted or fdisk.",
+   "disk_slots": 1,
+   "params": {
+    "SIZE": {
+     "choice": [
+      "100",
+      "150",
+      "200",
+      "300"
+     ]
+    },
+    "PNAME": {
+     "choice": [
+      "data",
+      "apps",
+      "backup",
+      "logs"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-part-resize",
+   "kind": "ported",
+   "title": "Grow a partition and its filesystem",
+   "domain": 4,
+   "category": "partitioning",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: grow partition 1 on @DISK@ (ext4, mounted at /mnt/dynresize) to {NEWSIZE} MiB and resize its filesystem to match, without data loss.",
+   "disk_slots": 1,
+   "params": {
+    "NEWSIZE": {
+     "choice": [
+      "300",
+      "350",
+      "400"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-part-delete",
+   "kind": "ported",
+   "title": "Delete a partition",
+   "domain": 4,
+   "category": "partitioning",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: completely remove partition {PNUM} on @DISK@, including any mount and /etc/fstab entry for it. The kernel must recognise the change.",
+   "disk_slots": 1,
+   "params": {
+    "PNUM": {
+     "choice": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-part-format-mount",
+   "kind": "ported",
+   "title": "Partition, format, mount, fstab",
+   "domain": 4,
+   "category": "partitioning",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: use @DISK@ to create a {SIZE} MiB partition (number 1) formatted with {FSTYPE} and mounted at {MOUNT}, persistently across reboots. Identify it by UUID in /etc/fstab.",
+   "disk_slots": 1,
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/data7",
+      "/mnt/apps23",
+      "/mnt/backup41",
+      "/mnt/extra58",
+      "/mnt/data86",
+      "/mnt/apps12"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "FSTYPE": "xfs",
+     "SIZE": "350"
+    },
+    {
+     "FSTYPE": "xfs",
+     "SIZE": "400"
+    },
+    {
+     "FSTYPE": "xfs",
+     "SIZE": "450"
+    },
+    {
+     "FSTYPE": "ext4",
+     "SIZE": "100"
+    },
+    {
+     "FSTYPE": "ext4",
+     "SIZE": "150"
+    },
+    {
+     "FSTYPE": "ext4",
+     "SIZE": "200"
+    },
+    {
+     "FSTYPE": "ext4",
+     "SIZE": "300"
+    }
+   ]
+  },
+  {
+   "id": "dyn-lvm-verify",
+   "kind": "ported",
+   "title": "Create a VG and an LV on a disk",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a {SIZE} MB logical volume named '{LV}' in volume group '{VG}'. Create the VG first if it does not exist, using the disk @DISK@.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    },
+    "SIZE": {
+     "choice": [
+      "300",
+      "350",
+      "400"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-lvm-pv-create",
+   "kind": "ported",
+   "title": "Create a physical volume",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: initialize @DISK@ as a physical volume for LVM use.",
+   "disk_slots": 1
+  },
+  {
+   "id": "dyn-lvm-vg-create",
+   "kind": "ported",
+   "title": "Create a volume group",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create volume group '{VG}' using @DISK@. Initialize the device as a PV first if needed.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-lvm-lv-create",
+   "kind": "ported",
+   "title": "Create a logical volume",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: in volume group '{VG}' create {WHAT} named '{LV}'.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "MODE": "size",
+     "PE": "4",
+     "SIZE": "300",
+     "WHAT": "a 300MB logical volume"
+    },
+    {
+     "MODE": "size",
+     "PE": "4",
+     "SIZE": "350",
+     "WHAT": "a 350MB logical volume"
+    },
+    {
+     "MODE": "size",
+     "PE": "4",
+     "SIZE": "400",
+     "WHAT": "a 400MB logical volume"
+    },
+    {
+     "MODE": "ext",
+     "PE": "8",
+     "EXT": "40",
+     "WHAT": "a logical volume of 40 extents (the VG uses a physical extent size of 8 MiB)"
+    },
+    {
+     "MODE": "ext",
+     "PE": "8",
+     "EXT": "50",
+     "WHAT": "a logical volume of 50 extents (the VG uses a physical extent size of 8 MiB)"
+    },
+    {
+     "MODE": "ext",
+     "PE": "16",
+     "EXT": "20",
+     "WHAT": "a logical volume of 20 extents (the VG uses a physical extent size of 16 MiB)"
+    },
+    {
+     "MODE": "ext",
+     "PE": "16",
+     "EXT": "25",
+     "WHAT": "a logical volume of 25 extents (the VG uses a physical extent size of 16 MiB)"
+    }
+   ]
+  },
+  {
+   "id": "dyn-lvm-extend",
+   "kind": "ported",
+   "title": "Extend a logical volume",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: extend logical volume '{LV}' in volume group '{VG}' {WHAT}. The VG has enough free space.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "MODE": "size",
+     "PE": "4",
+     "INITMB": "100",
+     "TARGET": "200",
+     "WHAT": "by 100 MB (to about 200 MB; it is currently 100 MB)"
+    },
+    {
+     "MODE": "size",
+     "PE": "4",
+     "INITMB": "100",
+     "TARGET": "250",
+     "WHAT": "by 150 MB (to about 250 MB; it is currently 100 MB)"
+    },
+    {
+     "MODE": "ext",
+     "PE": "16",
+     "INITMB": "96",
+     "TARGET": "14",
+     "WHAT": "by 8 extents (to 14 extents in total; the VG uses a 16 MiB extent size and it currently has 6 extents)"
+    },
+    {
+     "MODE": "ext",
+     "PE": "16",
+     "INITMB": "96",
+     "TARGET": "16",
+     "WHAT": "by 10 extents (to 16 extents in total; the VG uses a 16 MiB extent size and it currently has 6 extents)"
+    }
+   ]
+  },
+  {
+   "id": "dyn-lvm-full-workflow",
+   "kind": "ported",
+   "title": "Complete LVM workflow",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: complete LVM setup on @DISK@: (1) create a PV on it; (2) create VG '{VG}' using that PV; (3) create LV '{LV}' of {SIZE} MB in the VG; (4) format it with xfs; (5) mount it at {MOUNT}; (6) make the mount persistent in /etc/fstab, identified by UUID. All steps must be completed.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    },
+    "SIZE": {
+     "choice": [
+      "350",
+      "400",
+      "450"
+     ]
+    },
+    "MOUNT": {
+     "choice": [
+      "/mnt/lvm14",
+      "/mnt/lvm38",
+      "/mnt/lvm77"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-lvm-extent-workflow",
+   "kind": "ported",
+   "title": "LVM workflow sized in extents",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a logical volume sized in extents: (1) create volume group '{VG}' on @DISK@ with a physical extent size of {PE} MiB; (2) create logical volume '{LV}' consisting of {EXT} extents; (3) format it with xfs and mount it persistently at {MOUNT}.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    },
+    "MOUNT": {
+     "choice": [
+      "/mnt/lvm14",
+      "/mnt/lvm38",
+      "/mnt/lvm77"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "PE": "16",
+     "EXT": "20"
+    },
+    {
+     "PE": "8",
+     "EXT": "40"
+    },
+    {
+     "PE": "32",
+     "EXT": "10"
+    }
+   ]
+  },
+  {
+   "id": "dyn-lvm-vg-extend",
+   "kind": "ported",
+   "title": "Extend a volume group",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: volume group '{VG}' already exists. Add @DISK2@ to it as a new physical volume (initialize it first) and verify that the VG size increased.",
+   "disk_slots": 2,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-lvm-lv-remove",
+   "kind": "ported",
+   "title": "Remove a logical volume",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: remove logical volume '{LV}' from volume group '{VG}'. It is mounted at /mnt/{LV} and listed in /etc/fstab: unmount it, remove its fstab entry and then remove the volume.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-lvm-lv-reduce",
+   "kind": "ported",
+   "title": "Reduce an ext4 logical volume",
+   "domain": 4,
+   "category": "lvm",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: reduce logical volume '{LV}' in volume group '{VG}' to {NEWSIZE} MB. It is ext4, currently 350 MB, mounted at /mnt/{LV}. Unmount it, resize the filesystem, reduce the LV and mount it again. Keep the data.",
+   "disk_slots": 1,
+   "params": {
+    "VG": {
+     "choice": [
+      "vg_exam17",
+      "vg_exam42",
+      "vg_exam63",
+      "vg_data28",
+      "vg_data71",
+      "vg_prac35"
+     ]
+    },
+    "LV": {
+     "choice": [
+      "lv_data11",
+      "lv_data39",
+      "lv_data52",
+      "lv_app24",
+      "lv_app67"
+     ]
+    },
+    "NEWSIZE": {
+     "choice": [
+      "100",
+      "150",
+      "200"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-create",
+   "kind": "ported",
+   "title": "Create a filesystem",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: format @DISK@1 with a {FSTYPE} filesystem.",
+   "disk_slots": 1,
+   "params": {
+    "FSTYPE": {
+     "choice": [
+      "xfs",
+      "ext4"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-mount",
+   "kind": "ported",
+   "title": "Mount a filesystem",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: mount @DISK@1 at {MOUNT}.",
+   "disk_slots": 1,
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/data17",
+      "/mnt/data52",
+      "/mnt/data94"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-persistent",
+   "kind": "ported",
+   "title": "Persistent mount by UUID",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: mount @DISK@1 ({FSTYPE}, options: {OPTIONS}) at {MOUNT}, now and persistently across reboots. Identify the device by UUID.",
+   "disk_slots": 1,
+   "params": {
+    "FSTYPE": {
+     "choice": [
+      "xfs",
+      "ext4"
+     ]
+    },
+    "MOUNT": {
+     "choice": [
+      "/mnt/persistent21",
+      "/mnt/persistent47",
+      "/mnt/persistent83"
+     ]
+    },
+    "OPTIONS": {
+     "choice": [
+      "defaults"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-extend",
+   "kind": "ported",
+   "title": "Extend a mounted ext4 filesystem",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: extend the ext4 filesystem on /dev/mapper/vg_prac{SUFFIX}-lv_prac{SUFFIX} (mounted at /mnt/practice_extend{SUFFIX}, currently 100MB) to approximately {EXPECTED}MB without unmounting it or losing data.",
+   "disk_slots": 1,
+   "params": {
+    "SUFFIX": {
+     "int": [
+      1000,
+      9999
+     ]
+    },
+    "EXPECTED": {
+     "choice": [
+      "250",
+      "300",
+      "350"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-unmount",
+   "kind": "ported",
+   "title": "Unmount a busy filesystem",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: safely unmount the filesystem at {MOUNT}, dealing with any processes still using it.",
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/data31",
+      "/mnt/data65",
+      "/mnt/data90"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fs-vfat",
+   "kind": "ported",
+   "title": "Create and mount VFAT",
+   "domain": 4,
+   "category": "filesystems",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: format @DISK@1 as VFAT and mount it at {MOUNT}.",
+   "disk_slots": 1,
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/vfat9",
+      "/mnt/vfat36",
+      "/mnt/vfat74"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-swap-partition",
+   "kind": "ported",
+   "title": "Swap partition",
+   "domain": 4,
+   "category": "swap",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: use @DISK@ to create a {SIZE} MB swap partition and configure it as persistent swap.",
+   "disk_slots": 1,
+   "params": {
+    "SIZE": {
+     "choice": [
+      "256",
+      "400"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-swap-file",
+   "kind": "ported",
+   "title": "Swap file",
+   "domain": 4,
+   "category": "swap",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a {SIZE} MB persistent swap file at {SWAPFILE}.",
+   "params": {
+    "SIZE": {
+     "choice": [
+      "256",
+      "512",
+      "1024"
+     ]
+    },
+    "SWAPFILE": {
+     "choice": [
+      "/swapfile",
+      "/var/swap",
+      "/swap.img"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-swap-swappiness",
+   "kind": "ported",
+   "title": "Set vm.swappiness",
+   "domain": 4,
+   "category": "swap",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "sysctl@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set vm.swappiness to {SWAPPINESS}, applied immediately and persistently.",
+   "params": {
+    "SWAPPINESS": {
+     "choice": [
+      "10",
+      "20",
+      "30",
+      "40",
+      "60",
+      "80"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-nfs-mount",
+   "kind": "ported",
+   "title": "Mount an NFS share",
+   "domain": 4,
+   "category": "network_storage",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: mount the NFS share workstation.lab.example.com:/exports/dyn-nfsdata at {MOUNT} (create the mount point if needed), read-write.",
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/nfsdata"
+     ]
+    }
+   },
+   "server_hosts": [
+    "localhost"
+   ]
+  },
+  {
+   "id": "dyn-nfs-fstab",
+   "kind": "ported",
+   "title": "Persistent NFS mount",
+   "domain": 4,
+   "category": "network_storage",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: configure a persistent NFS mount of workstation.lab.example.com:/exports/dyn-nfsshared at {MOUNT}: add it to /etc/fstab using the _netdev option, and mount it so it works without a reboot.",
+   "params": {
+    "MOUNT": {
+     "choice": [
+      "/mnt/shared"
+     ]
+    }
+   },
+   "server_hosts": [
+    "localhost"
+   ]
+  },
+  {
+   "id": "dyn-autofs-basic",
+   "kind": "ported",
+   "title": "autofs: indirect wildcard or direct map",
+   "domain": 4,
+   "category": "network_storage",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "autofs@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: {WHAT}",
+   "param_sets": [
+    {
+     "MAPTYPE": "indirect",
+     "MOUNT": "/shares",
+     "EXPORT": "/exports/dyn-shares",
+     "WHAT": "configure autofs so that /shares is an automount directory: NFS server workstation.lab.example.com, export /exports/dyn-shares (it contains the subdirectories docs, tools and projects). Accessing /shares/<name> must automount workstation.lab.example.com:/exports/dyn-shares/<name>. Use a wildcard key so any subdirectory works without further changes. Mounts appear on access and unmount after the idle timeout. The autofs service must be running and enabled."
+    },
+    {
+     "MAPTYPE": "indirect",
+     "MOUNT": "/shares",
+     "EXPORT": "/exports/dyn-shares",
+     "WHAT": "configure autofs so that /shares is an automount directory: NFS server workstation.lab.example.com, export /exports/dyn-shares (it contains the subdirectories docs, tools and projects). Accessing /shares/<name> must automount workstation.lab.example.com:/exports/dyn-shares/<name>. Use a wildcard key so any subdirectory works without further changes. Mounts appear on access and unmount after the idle timeout. The autofs service must be running and enabled."
+    },
+    {
+     "MAPTYPE": "indirect",
+     "MOUNT": "/shares",
+     "EXPORT": "/exports/dyn-shares",
+     "WHAT": "configure autofs so that /shares is an automount directory: NFS server workstation.lab.example.com, export /exports/dyn-shares (it contains the subdirectories docs, tools and projects). Accessing /shares/<name> must automount workstation.lab.example.com:/exports/dyn-shares/<name>. Use a wildcard key so any subdirectory works without further changes. Mounts appear on access and unmount after the idle timeout. The autofs service must be running and enabled."
+    },
+    {
+     "MAPTYPE": "direct",
+     "MOUNT": "/data",
+     "EXPORT": "/exports/dyn-data",
+     "WHAT": "configure autofs so that /data is automatically mounted from the NFS export workstation.lab.example.com:/exports/dyn-data. /data itself is the mount target (a direct map, not a directory of automounts). It must mount on access and unmount after the idle timeout. The autofs service must be running and enabled."
+    }
+   ],
+   "server_hosts": [
+    "localhost"
+   ]
+  },
+  {
+   "id": "dyn-autofs-home",
+   "kind": "ported",
+   "title": "autofs for home directories",
+   "domain": 4,
+   "category": "network_storage",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "autofs@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: configure autofs so that /home/guests is an automount directory for user home directories: NFS server workstation.lab.example.com, export base /exports/dyn-guests. /home/guests/<user> must auto-mount from workstation.lab.example.com:/exports/dyn-guests/<user>. Subdirectories appear on demand (an indirect map with a wildcard key). The service must be running and enabled.",
+   "server_hosts": [
+    "localhost"
+   ]
+  },
+  {
+   "id": "dyn-user-create-uid",
+   "kind": "ported",
+   "title": "Create a user with a UID",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a new user account {ACCT} with UID {UIDN}, home directory /home/{ACCT} (it must be created) and default shell /bin/bash.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "alice31",
+      "bob47",
+      "carol62",
+      "dave18",
+      "eve75",
+      "frank53",
+      "grace29",
+      "hank84"
+     ]
+    },
+    "UIDN": {
+     "int": [
+      2000,
+      5999
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-user-nologin",
+   "kind": "ported",
+   "title": "Create a user that cannot log in",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a user account {ACCT} that cannot log in interactively: UID {UIDN}, shell /sbin/nologin and home directory /home/{ACCT}.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "appsvc31",
+      "mailsvc52",
+      "websvc67",
+      "dbsvc24",
+      "ftpsvc83",
+      "logsvc46"
+     ]
+    },
+    "UIDN": {
+     "int": [
+      3000,
+      4999
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-user-groups",
+   "kind": "ported",
+   "title": "Add a user to supplementary groups",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: add user {ACCT} (it already exists) to these supplementary groups: {GROUPSTXT}. Create the groups first if they do not exist. Do not remove any existing supplementary group membership.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "staffuser21",
+      "staffuser47",
+      "staffuser83"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "GROUPS_LIST": "developers dbadmins",
+     "GROUPSTXT": "developers, dbadmins"
+    },
+    {
+     "GROUPS_LIST": "webteam security",
+     "GROUPSTXT": "webteam, security"
+    },
+    {
+     "GROUPS_LIST": "ops devops qa",
+     "GROUPSTXT": "ops, devops, qa"
+    },
+    {
+     "GROUPS_LIST": "netadmin developers",
+     "GROUPSTXT": "netadmin, developers"
+    },
+    {
+     "GROUPS_LIST": "qa dbadmins webteam",
+     "GROUPSTXT": "qa, dbadmins, webteam"
+    },
+    {
+     "GROUPS_LIST": "security ops",
+     "GROUPSTXT": "security, ops"
+    }
+   ]
+  },
+  {
+   "id": "dyn-passwd-aging",
+   "kind": "ported",
+   "title": "Password aging policy",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: configure password aging for user {ACCT} (it exists): at most {MAXD} days between password changes, at least {MIND} days, a warning {WARN} days before the password expires, and {INACT} days of inactivity after expiration before the account is locked.{FORCETXT}",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "ageuser21",
+      "ageuser47",
+      "ageuser83"
+     ]
+    },
+    "MAXD": {
+     "choice": [
+      "30",
+      "60",
+      "90",
+      "120",
+      "180"
+     ]
+    },
+    "MIND": {
+     "choice": [
+      "0",
+      "1",
+      "3",
+      "7"
+     ]
+    },
+    "WARN": {
+     "choice": [
+      "7",
+      "10",
+      "14"
+     ]
+    },
+    "INACT": {
+     "choice": [
+      "7",
+      "14",
+      "30"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "FORCE": "yes",
+     "FORCETXT": " The user must also be forced to change the password at the next login."
+    },
+    {
+     "FORCE": "no",
+     "FORCETXT": ""
+    }
+   ]
+  },
+  {
+   "id": "dyn-group-create",
+   "kind": "ported",
+   "title": "Create a group with a GID",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a new group {GRP} with GID {GIDN}.",
+   "params": {
+    "GRP": {
+     "choice": [
+      "devteam31",
+      "qagroup52",
+      "opsgroup67",
+      "infrateam24",
+      "secteam83",
+      "datateam46",
+      "cloudops15"
+     ]
+    },
+    "GIDN": {
+     "int": [
+      5000,
+      7999
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-sudo",
+   "kind": "ported",
+   "title": "Sudo access through a drop-in",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "sudoers@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: grant user {ACCT} (it exists) sudo access to run {CMDS} as root{PASSTXT}. Use a drop-in file under /etc/sudoers.d/ and keep the sudoers syntax valid.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "operator21",
+      "operator47",
+      "operator83"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "NOPASSWD": "yes",
+     "PASSTXT": " without a password",
+     "CMDS": "ALL"
+    },
+    {
+     "NOPASSWD": "yes",
+     "PASSTXT": " without a password",
+     "CMDS": "/usr/bin/systemctl, /usr/bin/journalctl"
+    },
+    {
+     "NOPASSWD": "yes",
+     "PASSTXT": " without a password",
+     "CMDS": "/usr/sbin/useradd, /usr/sbin/usermod, /usr/sbin/userdel"
+    },
+    {
+     "NOPASSWD": "yes",
+     "PASSTXT": " without a password",
+     "CMDS": "/usr/bin/mount, /usr/bin/umount"
+    },
+    {
+     "NOPASSWD": "no",
+     "PASSTXT": " (a password is required)",
+     "CMDS": "ALL"
+    },
+    {
+     "NOPASSWD": "no",
+     "PASSTXT": " (a password is required)",
+     "CMDS": "/usr/bin/systemctl, /usr/bin/journalctl"
+    },
+    {
+     "NOPASSWD": "no",
+     "PASSTXT": " (a password is required)",
+     "CMDS": "/usr/sbin/useradd, /usr/sbin/usermod, /usr/sbin/userdel"
+    },
+    {
+     "NOPASSWD": "no",
+     "PASSTXT": " (a password is required)",
+     "CMDS": "/usr/bin/mount, /usr/bin/umount"
+    }
+   ]
+  },
+  {
+   "id": "dyn-user-lock",
+   "kind": "ported",
+   "title": "Lock or unlock an account",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: {WHAT}",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "locktest21",
+      "locktest47",
+      "locktest83"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "ACTION": "lock",
+     "WHAT": "lock the account {ACCT}: it must not be able to log in with a password, and the account must still exist (do not delete it)."
+    },
+    {
+     "ACTION": "unlock",
+     "WHAT": "unlock the account {ACCT}, which is currently locked, so that password authentication works again."
+    }
+   ]
+  },
+  {
+   "id": "dyn-user-delete",
+   "kind": "ported",
+   "title": "Delete a user",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: delete user {ACCT}: {WHAT}",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "removeuser21",
+      "removeuser47",
+      "removeuser83"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "REMOVE_HOME": "yes",
+     "WHAT": "also remove its home directory /home/{ACCT}."
+    },
+    {
+     "REMOVE_HOME": "no",
+     "WHAT": "keep its home directory /home/{ACCT} (and the files in it)."
+    }
+   ]
+  },
+  {
+   "id": "dyn-user-shell",
+   "kind": "ported",
+   "title": "Change a login shell",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: change the login shell of user {ACCT} (it exists) to {NEWSHELL}.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "shelluser21",
+      "shelluser47",
+      "shelluser83"
+     ]
+    },
+    "NEWSHELL": {
+     "choice": [
+      "/bin/bash",
+      "/bin/sh",
+      "/sbin/nologin",
+      "/bin/false"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-account",
+   "kind": "ported",
+   "title": "Create a service account",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a system (service) account {ACCT}: a UID in the system range (below 1000), no home directory, shell /sbin/nologin and the comment (GECOS) \"{COMMENT}\".",
+   "param_sets": [
+    {
+     "ACCT": "nginxsvc21",
+     "COMMENT": "Nginx Service Account"
+    },
+    {
+     "ACCT": "redissvc47",
+     "COMMENT": "Redis Service Account"
+    },
+    {
+     "ACCT": "tomcatsvc62",
+     "COMMENT": "Tomcat Service Account"
+    },
+    {
+     "ACCT": "grafanasvc18",
+     "COMMENT": "Grafana Service Account"
+    },
+    {
+     "ACCT": "consulsvc75",
+     "COMMENT": "Consul Service Account"
+    },
+    {
+     "ACCT": "vaultsvc34",
+     "COMMENT": "Vault Service Account"
+    }
+   ]
+  },
+  {
+   "id": "dyn-bulk-users",
+   "kind": "ported",
+   "title": "Create several users in a group",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the group {GRP} and these users, each with the given UID and shell, each a supplementary member of {GRP} and each with a home directory under /home/: {USERLINES}.",
+   "param_sets": [
+    {
+     "GRP": "engineering",
+     "USERS": "anna_eng:3101:/bin/bash ben_eng:3102:/bin/sh clara_eng:3103:/bin/bash",
+     "USERLINES": "anna_eng (UID 3101, shell /bin/bash), ben_eng (UID 3102, shell /bin/sh), clara_eng (UID 3103, shell /bin/bash)"
+    },
+    {
+     "GRP": "marketing",
+     "USERS": "dan_mar:3201:/bin/sh ella_mar:3202:/bin/bash finn_mar:3203:/bin/bash gina_mar:3204:/bin/sh",
+     "USERLINES": "dan_mar (UID 3201, shell /bin/sh), ella_mar (UID 3202, shell /bin/bash), finn_mar (UID 3203, shell /bin/bash), gina_mar (UID 3204, shell /bin/sh)"
+    },
+    {
+     "GRP": "finance",
+     "USERS": "hugo_fin:3301:/bin/bash iris_fin:3302:/bin/bash jake_fin:3303:/bin/sh",
+     "USERLINES": "hugo_fin (UID 3301, shell /bin/bash), iris_fin (UID 3302, shell /bin/bash), jake_fin (UID 3303, shell /bin/sh)"
+    },
+    {
+     "GRP": "research",
+     "USERS": "anna_res:3401:/bin/sh ben_res:3402:/bin/bash clara_res:3403:/bin/sh dan_res:3404:/bin/bash ella_res:3405:/bin/bash",
+     "USERLINES": "anna_res (UID 3401, shell /bin/sh), ben_res (UID 3402, shell /bin/bash), clara_res (UID 3403, shell /bin/sh), dan_res (UID 3404, shell /bin/bash), ella_res (UID 3405, shell /bin/bash)"
+    }
+   ]
+  },
+  {
+   "id": "dyn-troubleshoot-user",
+   "kind": "ported",
+   "title": "Fix a user that cannot log in",
+   "domain": 3,
+   "category": "users_groups",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: user {ACCT} reports that they cannot log in. Symptom: {SYMPTOM} Task: {FIX} After fixing, the user must have an unlocked account, the shell /bin/bash, and no account or password expiration blocking access.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "troubleuser21",
+      "troubleuser47",
+      "troubleuser83"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "PROBLEM": "locked",
+     "SYMPTOM": "the user's account appears to be locked.",
+     "FIX": "unlock the account."
+    },
+    {
+     "PROBLEM": "nologin_shell",
+     "SYMPTOM": "the user's shell was changed to /sbin/nologin.",
+     "FIX": "set the shell back to /bin/bash."
+    },
+    {
+     "PROBLEM": "expired_account",
+     "SYMPTOM": "the user's account has expired.",
+     "FIX": "remove the account expiration (never expires)."
+    },
+    {
+     "PROBLEM": "expired_password",
+     "SYMPTOM": "the user's password has expired.",
+     "FIX": "reset password aging so the password is not expired, with a maximum of 90 days."
+    }
+   ]
+  },
+  {
+   "id": "dyn-perm-basic",
+   "kind": "ported",
+   "title": "Set file permissions",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: set the permissions of {FILE} to {PERMS} (octal).",
+   "params": {
+    "FILE": {
+     "choice": [
+      "/tmp/testfile17.txt",
+      "/tmp/testfile42.txt",
+      "/tmp/testfile88.txt"
+     ]
+    },
+    "PERMS": {
+     "choice": [
+      "644",
+      "640",
+      "600",
+      "755",
+      "750",
+      "700"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-perm-owner",
+   "kind": "ported",
+   "title": "Set file owner and group",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: set the owner of {FILE} to {OWNER} and its group to {GROUP}.",
+   "params": {
+    "FILE": {
+     "choice": [
+      "/tmp/ownertest9.txt",
+      "/tmp/ownertest36.txt",
+      "/tmp/ownertest74.txt"
+     ]
+    },
+    "OWNER": {
+     "choice": [
+      "root",
+      "nobody"
+     ]
+    },
+    "GROUP": {
+     "choice": [
+      "root",
+      "wheel",
+      "nobody"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-acl-file",
+   "kind": "ported",
+   "title": "ACL on a file",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: use ACLs to grant user {ACCT} the permissions {ACLPERMS} on {FILE}.",
+   "params": {
+    "FILE": {
+     "choice": [
+      "/tmp/acltest21.txt",
+      "/tmp/acltest58.txt",
+      "/tmp/acltest77.txt"
+     ]
+    },
+    "ACCT": {
+     "choice": [
+      "nobody",
+      "daemon",
+      "bin"
+     ]
+    },
+    "ACLPERMS": {
+     "choice": [
+      "r--",
+      "rw-",
+      "r-x"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-perm-special",
+   "kind": "ported",
+   "title": "Special permission bits",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: {WHAT}",
+   "param_sets": [
+    {
+     "KIND": "setuid",
+     "MODE": "4755",
+     "FILE": "/tmp/specialperm14",
+     "WHAT": "apply the setuid bit to the file {FILE}, keeping base permissions rwxr-xr-x (755): it must run as the file owner regardless of who executes it."
+    },
+    {
+     "KIND": "setgid",
+     "MODE": "2755",
+     "FILE": "/tmp/specialperm37",
+     "WHAT": "apply the setgid bit to the file {FILE}, keeping base permissions rwxr-xr-x (755): it must run with the file group regardless of who executes it."
+    },
+    {
+     "KIND": "sticky",
+     "MODE": "1777",
+     "FILE": "/tmp/specialperm62",
+     "WHAT": "apply the sticky bit to the directory {FILE}, keeping base permissions rwxrwxrwx (777): only the owner of a file can delete it inside the directory."
+    }
+   ]
+  },
+  {
+   "id": "dyn-perm-shared-dir",
+   "kind": "ported",
+   "title": "Collaborative directory (SGID + sticky)",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: configure a collaborative directory at {DIR}: create it (with parent directories), set its group to {GRP}, make new files and directories inherit the group {GRP}, let users delete only their own files, give the group members full read/write/execute access and give others no access.",
+   "params": {
+    "DIR": {
+     "choice": [
+      "/shared/project12",
+      "/shared/project47",
+      "/shared/project83"
+     ]
+    },
+    "GRP": {
+     "choice": [
+      "projdev",
+      "projteam",
+      "projshared"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-acl-default",
+   "kind": "ported",
+   "title": "Default ACL on a directory",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: configure a default ACL on the directory {DIR} (create it if needed): user {ACCT} (it exists) must get the permissions {ACLPERMS} on every new file and directory created inside it, through inheritance, not only on the directory itself.",
+   "params": {
+    "DIR": {
+     "choice": [
+      "/srv/acltest19",
+      "/srv/acltest46",
+      "/srv/acltest71"
+     ]
+    },
+    "ACCT": {
+     "choice": [
+      "aclweb",
+      "acldev",
+      "aclops"
+     ]
+    },
+    "ACLPERMS": {
+     "choice": [
+      "rwx",
+      "rw-",
+      "r-x"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-perm-recursive",
+   "kind": "ported",
+   "title": "Recursive ownership and permissions",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: set ownership and permissions recursively on {DIR}: owner {OWNER}, group {GRP}, directories with mode {DIRPERMS} and files with mode {FILEPERMS}, applied to ALL files and subdirectories.",
+   "params": {
+    "DIR": {
+     "choice": [
+      "/var/data/project15",
+      "/var/data/project48",
+      "/var/data/project92"
+     ]
+    },
+    "OWNER": {
+     "choice": [
+      "root",
+      "nobody"
+     ]
+    },
+    "GRP": {
+     "choice": [
+      "webdata",
+      "devdata"
+     ]
+    },
+    "DIRPERMS": {
+     "choice": [
+      "755"
+     ]
+    },
+    "FILEPERMS": {
+     "choice": [
+      "644"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-perm-umask",
+   "kind": "ported",
+   "title": "Persistent umask",
+   "domain": 3,
+   "category": "permissions",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: set the umask to {UMASKV} for user {ACCT} and make it persistent, so that every login of {ACCT} gets it and new files and directories are created with the matching default permissions.",
+   "param_sets": [
+    {
+     "ACCT": "root",
+     "UMASKV": "0027"
+    },
+    {
+     "ACCT": "root",
+     "UMASKV": "0077"
+    },
+    {
+     "ACCT": "root",
+     "UMASKV": "0002"
+    },
+    {
+     "ACCT": "umasktest",
+     "UMASKV": "0027"
+    },
+    {
+     "ACCT": "umasktest",
+     "UMASKV": "0077"
+    },
+    {
+     "ACCT": "umasktest",
+     "UMASKV": "0002"
+    }
+   ]
+  },
+  {
+   "id": "dyn-cron-user",
+   "kind": "ported",
+   "title": "Create a user cron job",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "crontab-root@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: create a cron job for user root that runs {SCHEDDESC}: {CMD}. Use the crontab command.",
+   "param_sets": [
+    {
+     "SCHEDULE": "0 2 * * *",
+     "SCHEDDESC": "daily at 2:00 AM",
+     "CMD": "/usr/local/bin/backup.sh"
+    },
+    {
+     "SCHEDULE": "*/15 * * * *",
+     "SCHEDDESC": "every 15 minutes",
+     "CMD": "/usr/bin/logger \"dyn cron check\""
+    },
+    {
+     "SCHEDULE": "0 */6 * * *",
+     "SCHEDDESC": "every 6 hours",
+     "CMD": "/usr/local/bin/cleanup.sh --quiet"
+    },
+    {
+     "SCHEDULE": "0 0 * * 0",
+     "SCHEDDESC": "weekly on Sunday at midnight",
+     "CMD": "/usr/sbin/logrotate /etc/logrotate.conf"
+    },
+    {
+     "SCHEDULE": "30 1 * * 1-5",
+     "SCHEDDESC": "on weekdays at 1:30 AM",
+     "CMD": "/usr/local/bin/report.sh weekday"
+    }
+   ]
+  },
+  {
+   "id": "dyn-cron-system",
+   "kind": "ported",
+   "title": "System-wide cron job in /etc/cron.d",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a system-wide cron job: file /etc/cron.d/{JOB}, run as user {RUNAS}, {SCHEDDESC}, command {CMD}. Configure it in /etc/cron.d/, not in a user crontab.",
+   "params": {
+    "JOB": {
+     "choice": [
+      "custom-job-12",
+      "custom-job-47",
+      "custom-job-83"
+     ]
+    },
+    "RUNAS": {
+     "choice": [
+      "root"
+     ]
+    },
+    "CMD": {
+     "choice": [
+      "/usr/local/bin/maintenance.sh"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "SCHEDULE": "0 3 * * *",
+     "SCHEDDESC": "daily at 3:00 AM"
+    },
+    {
+     "SCHEDULE": "0 0 * * 0",
+     "SCHEDDESC": "weekly on Sunday at midnight"
+    },
+    {
+     "SCHEDULE": "0 */4 * * *",
+     "SCHEDDESC": "every 4 hours"
+    },
+    {
+     "SCHEDULE": "30 6 * * 1-5",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "SCHEDULE": "0 12 1 * *",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    }
+   ]
+  },
+  {
+   "id": "dyn-at-job",
+   "kind": "ported",
+   "title": "One-time job with at",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: schedule a one-time job with at, {SPECDESC} (at specification \"{SPEC}\"), that runs: echo \"At job executed\" >> /tmp/atjob.log. The atd service must be running.",
+   "param_sets": [
+    {
+     "SPEC": "now + 30 minutes",
+     "SECS": "1800",
+     "SPECDESC": "in 30 minutes"
+    },
+    {
+     "SPEC": "now + 1 hour",
+     "SECS": "3600",
+     "SPECDESC": "in 1 hour"
+    },
+    {
+     "SPEC": "now + 2 hours",
+     "SECS": "7200",
+     "SPECDESC": "in 2 hours"
+    },
+    {
+     "SPEC": "now + 1 day",
+     "SECS": "86400",
+     "SPECDESC": "in 1 day"
+    }
+   ]
+  },
+  {
+   "id": "dyn-cron-list",
+   "kind": "ported",
+   "title": "List and save cron jobs",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: list the cron jobs of user {ACCT} and save the listing to {OUTFILE}.",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "cronlist21",
+      "cronlist47",
+      "cronlist83"
+     ]
+    },
+    "OUTFILE": {
+     "choice": [
+      "/tmp/cron_jobs.txt",
+      "/tmp/cronlist.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-cron-expr",
+   "kind": "ported",
+   "title": "Write the right cron expression",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "crontab-root@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: create a cron job for user root with the correct schedule: {EXPRDESC}, command {CMD}. Write the cron expression yourself and add it to root's crontab.",
+   "param_sets": [
+    {
+     "EXPR": "*/5 * * * *",
+     "EXPRDESC": "every 5 minutes",
+     "CMD": "/usr/local/bin/check_health.sh"
+    },
+    {
+     "EXPR": "0 2 * * *",
+     "EXPRDESC": "every day at 2:00 AM",
+     "CMD": "/usr/local/bin/backup.sh"
+    },
+    {
+     "EXPR": "0 0 * * 0",
+     "EXPRDESC": "every Sunday at midnight",
+     "CMD": "/usr/local/bin/weekly_report.sh"
+    },
+    {
+     "EXPR": "30 8 1 * *",
+     "EXPRDESC": "at 8:30 AM on the 1st of every month",
+     "CMD": "/usr/local/bin/monthly_audit.sh"
+    },
+    {
+     "EXPR": "0 */4 * * *",
+     "EXPRDESC": "every 4 hours",
+     "CMD": "/usr/local/bin/sync_data.sh"
+    },
+    {
+     "EXPR": "0 9 * * 1-5",
+     "EXPRDESC": "at 9:00 AM on weekdays",
+     "CMD": "/usr/local/bin/workday_task.sh"
+    }
+   ]
+  },
+  {
+   "id": "dyn-cron-access",
+   "kind": "ported",
+   "title": "Restrict access to cron",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "cron-access@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: {WHAT}",
+   "params": {
+    "ACCT": {
+     "choice": [
+      "cronusr11",
+      "cronusr42"
+     ]
+    },
+    "OTHER": {
+     "choice": [
+      "cronoth11",
+      "cronoth42"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "METHOD": "deny",
+     "WHAT": "deny cron access to user {ACCT} by adding the user to /etc/cron.deny, so that {ACCT} cannot use crontab. Other users must keep their access."
+    },
+    {
+     "METHOD": "allow",
+     "WHAT": "allow only user {ACCT} (besides root) to use cron: create /etc/cron.allow listing {ACCT}. Other users, such as {OTHER}, must not be able to use crontab."
+    }
+   ]
+  },
+  {
+   "id": "dyn-cron-dir",
+   "kind": "ported",
+   "title": "Script in a cron directory",
+   "domain": 8,
+   "category": "scheduling",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a {FREQ} cron task: place an executable bash script named {SCRIPT} in {CRONDIR}/ (it must start with #!/bin/bash and run a simple command, such as a log cleanup), and make sure cron's run-parts will actually run it.",
+   "params": {
+    "SCRIPT": {
+     "choice": [
+      "log-cleanup",
+      "disk-report",
+      "tmp-purge"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "CRONDIR": "/etc/cron.daily",
+     "FREQ": "daily"
+    },
+    {
+     "CRONDIR": "/etc/cron.hourly",
+     "FREQ": "hourly"
+    },
+    {
+     "CRONDIR": "/etc/cron.weekly",
+     "FREQ": "weekly"
+    }
+   ]
+  },
+  {
+   "id": "dyn-script-basic",
+   "kind": "ported",
+   "title": "A basic shell script",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT} that, when run, will {WHAT} It must start with a proper shebang line.",
+   "param_sets": [
+    {
+     "PURPOSE": "list_users",
+     "SCRIPT": "/usr/local/bin/list_users.sh",
+     "WHAT": "print all usernames from /etc/passwd, one per line, and nothing else."
+    },
+    {
+     "PURPOSE": "disk_usage",
+     "SCRIPT": "/usr/local/bin/disk_usage.sh",
+     "WHAT": "display the disk usage summary of /home in human-readable form, like du -sh /home."
+    },
+    {
+     "PURPOSE": "system_info",
+     "SCRIPT": "/usr/local/bin/system_info.sh",
+     "WHAT": "print the hostname on the first line and the kernel version on the second line, like hostname followed by uname -r."
+    }
+   ]
+  },
+  {
+   "id": "dyn-script-args",
+   "kind": "ported",
+   "title": "A script with arguments",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT}: {WHAT}",
+   "param_sets": [
+    {
+     "TASK": "greet",
+     "SCRIPT": "/usr/local/bin/greet.sh",
+     "WHAT": "it takes a name as its first argument and prints a greeting that includes the name. With no argument it must print an error message to stderr and exit with status 1."
+    },
+    {
+     "TASK": "file_check",
+     "SCRIPT": "/usr/local/bin/file_check.sh",
+     "WHAT": "it takes a path as its first argument and prints exists if the path exists or not found otherwise. With no argument it must print an error message to stderr and exit with status 1."
+    },
+    {
+     "TASK": "user_info",
+     "SCRIPT": "/usr/local/bin/user_info.sh",
+     "WHAT": "it takes a username as its first argument and prints that user's line from /etc/passwd. If the user does not exist it must exit with status 1. With no argument it must print an error message to stderr and exit with status 1."
+    }
+   ]
+  },
+  {
+   "id": "dyn-script-cond",
+   "kind": "ported",
+   "title": "A script with if/else",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT}: {WHAT} Use an if/then/else/fi structure.",
+   "param_sets": [
+    {
+     "CONDITION": "file_type",
+     "SCRIPT": "/usr/local/bin/check_file_type.sh",
+     "WHAT": "it takes a path as its first argument and prints exactly one of these: file, directory, or does not exist."
+    },
+    {
+     "CONDITION": "user_exists",
+     "SCRIPT": "/usr/local/bin/check_user_exists.sh",
+     "WHAT": "it takes a username as its first argument and prints exactly exists or does not exist."
+    },
+    {
+     "CONDITION": "service_status",
+     "SCRIPT": "/usr/local/bin/check_service_status.sh",
+     "WHAT": "it takes a systemd service name as its first argument and prints exactly running if the service is active, or not running otherwise."
+    }
+   ]
+  },
+  {
+   "id": "dyn-script-loop",
+   "kind": "ported",
+   "title": "A script with loops",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT}: {WHAT} Use a for or while loop.",
+   "param_sets": [
+    {
+     "LOOP": "for_files",
+     "SCRIPT": "/usr/local/bin/loop_for_files.sh",
+     "WHAT": "it counts the .conf files located directly in /etc (not in subdirectories) and prints the count."
+    },
+    {
+     "LOOP": "for_users",
+     "SCRIPT": "/usr/local/bin/loop_for_users.sh",
+     "WHAT": "it prints each username from /etc/passwd on its own line, and nothing else."
+    },
+    {
+     "LOOP": "for_args",
+     "SCRIPT": "/usr/local/bin/loop_for_args.sh",
+     "WHAT": "it prints each command-line argument on its own line (arguments may contain spaces)."
+    }
+   ]
+  },
+  {
+   "id": "dyn-script-exit",
+   "kind": "ported",
+   "title": "A script with exit codes",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT} (mode 755: it is tested as an unprivileged user). It takes a file path as its argument and prints an appropriate message for each case: exit 0 if the file exists and is readable, exit 1 if it does not exist, exit 2 if it exists but is not readable.",
+   "params": {
+    "SCRIPT": {
+     "choice": [
+      "/usr/local/bin/check_and_exit.sh"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-script-cmdsub",
+   "kind": "ported",
+   "title": "A script with command substitution",
+   "domain": 8,
+   "category": "scripting",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create the executable bash script {SCRIPT}: {WHAT} Use command substitution and store the output in a variable.",
+   "param_sets": [
+    {
+     "TASK": "count_users",
+     "SCRIPT": "/usr/local/bin/count_users.sh",
+     "WHAT": "it stores the number of lines of /etc/passwd in a variable and prints a message that includes that number."
+    },
+    {
+     "TASK": "current_date",
+     "SCRIPT": "/usr/local/bin/current_date.sh",
+     "WHAT": "it stores today's date (YYYY-MM-DD) in a variable and prints a file name of the form backup-YYYY-MM-DD.tar.gz with that date (it does not create the file)."
+    },
+    {
+     "TASK": "disk_free",
+     "SCRIPT": "/usr/local/bin/disk_free.sh",
+     "WHAT": "it takes a threshold in MB as its first argument, stores the available space of / in MB in a variable and prints LOW if the available space is below the threshold, or OK otherwise."
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-mode",
+   "kind": "ported",
+   "title": "SELinux mode, runtime and persistent",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "selinux-mode@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set SELinux to {MODE} mode: (1) change the current runtime mode to {MODE}; (2) make the mode persist after a reboot by editing /etc/selinux/config.",
+   "params": {
+    "MODE": {
+     "choice": [
+      "Enforcing",
+      "Permissive"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-selinux-context",
+   "kind": "ported",
+   "title": "Persistent file context with semanage + restorecon",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: the directory {DIR} already exists and has files in it. Set its SELinux type to {TYPE}, applied to the directory and every file inside it, and make the change persistent across filesystem relabels.",
+   "params": {
+    "DIR": {
+     "choice": [
+      "/srv/web17",
+      "/srv/web42",
+      "/srv/web88"
+     ]
+    },
+    "TYPE": {
+     "choice": [
+      "httpd_sys_content_t",
+      "public_content_t",
+      "samba_share_t",
+      "nfs_t",
+      "httpd_sys_rw_content_t"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-selinux-denial",
+   "kind": "ported",
+   "title": "Fix an SELinux denial",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "selinux-bool@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: an SELinux denial is preventing a service from working. Symptom: {WHAT}",
+   "param_sets": [
+    {
+     "KIND": "fcontext",
+     "TARGET": "/srv/webapp",
+     "TYPE": "httpd_sys_rw_content_t",
+     "WHAT": "a web application running in the httpd_t domain cannot write to its data directory {TARGET}. Fix the SELinux file context of {TARGET} and everything under it, and make the fix persistent across relabels."
+    },
+    {
+     "KIND": "fcontext",
+     "TARGET": "/srv/shares",
+     "TYPE": "samba_share_t",
+     "WHAT": "the Samba server (smbd_t) cannot access the files in its share directory {TARGET}. Fix the SELinux file context of {TARGET} and everything under it, and make the fix persistent across relabels."
+    },
+    {
+     "KIND": "fcontext",
+     "TARGET": "/opt/webdata",
+     "TYPE": "httpd_sys_content_t",
+     "WHAT": "a web server running in the httpd_t domain cannot serve the files in {TARGET}. Fix the SELinux file context of {TARGET} and everything under it, and make the fix persistent across relabels."
+    },
+    {
+     "KIND": "fcontext",
+     "TARGET": "/var/www/custom",
+     "TYPE": "httpd_sys_content_t",
+     "WHAT": "a web server running in the httpd_t domain cannot serve the files in {TARGET}. Fix the SELinux file context of {TARGET} and everything under it, and make the fix persistent across relabels."
+    },
+    {
+     "KIND": "boolean",
+     "TARGET": "httpd_can_network_connect",
+     "TYPE": "",
+     "WHAT": "a web server in the httpd_t domain cannot make outgoing network connections to a backend. Fix it by enabling the appropriate SELinux boolean, persistently."
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-avc",
+   "kind": "ported",
+   "title": "Analyze an AVC denial and fix the file type",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: {WHAT}",
+   "param_sets": [
+    {
+     "DIR": "/var/www/reports",
+     "TYPE": "httpd_sys_content_t",
+     "WHAT": "the Apache web server (domain httpd_t) is being denied read access to the files in {DIR}. Work out the root cause (ls -Z, matchpathcon, semanage fcontext -l), give {DIR} and all its contents the correct SELinux file type for web content, make the fix persistent and verify it."
+    },
+    {
+     "DIR": "/srv/ftp/uploads",
+     "TYPE": "public_content_rw_t",
+     "WHAT": "the vsftpd service (domain ftpd_t) is being denied write access to the files in {DIR}. Work out the root cause, give {DIR} and all its contents the correct SELinux file type for FTP content that the server may write, make the fix persistent and verify it."
+    },
+    {
+     "DIR": "/opt/appdata",
+     "TYPE": "httpd_sys_rw_content_t",
+     "WHAT": "the Apache web server (domain httpd_t) is being denied write access to the directory {DIR}. Work out the root cause, give {DIR} and all its contents the correct SELinux file type for web content that the server may write, make the fix persistent and verify it."
+    },
+    {
+     "DIR": "/srv/samba/docs",
+     "TYPE": "samba_share_t",
+     "WHAT": "the Samba server (domain smbd_t) is being denied read access to the files in {DIR}. Work out the root cause, give {DIR} and all its contents the correct SELinux file type for Samba shares, make the fix persistent and verify it."
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-restorecon",
+   "kind": "ported",
+   "title": "Restore default contexts with restorecon",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: the files in {DIR} have incorrect SELinux contexts, as if they had been moved there with mv. Restore the default SELinux context on {DIR} recursively. {WHAT}",
+   "param_sets": [
+    {
+     "DIR": "/var/www/dynsite21",
+     "TYPE": "httpd_sys_content_t",
+     "WHAT": "It is a web content directory."
+    },
+    {
+     "DIR": "/var/log/dynlogs37",
+     "TYPE": "var_log_t",
+     "WHAT": "It is a log directory."
+    },
+    {
+     "DIR": "/etc/dyncfg52",
+     "TYPE": "etc_t",
+     "WHAT": "It is a configuration directory."
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-service-diag",
+   "kind": "ported",
+   "title": "Diagnose a service failing because of SELinux",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "selinux-bool@{host}",
+    "selinux-port@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: {WHAT} Diagnose the SELinux cause, apply the correct fix(es) and make ALL changes persistent.",
+   "param_sets": [
+    {
+     "DIR": "/srv/website",
+     "TYPE": "httpd_sys_content_t",
+     "BOOL": "",
+     "PORT": "",
+     "PTYPE": "",
+     "WHAT": "a web server cannot serve content from {DIR} (the directory exists and has files)."
+    },
+    {
+     "DIR": "",
+     "TYPE": "",
+     "BOOL": "httpd_can_network_connect",
+     "PORT": "",
+     "PTYPE": "",
+     "WHAT": "a web server starts but cannot connect to a backend database."
+    },
+    {
+     "DIR": "",
+     "TYPE": "",
+     "BOOL": "",
+     "PORT": "8080",
+     "PTYPE": "http_port_t",
+     "WHAT": "a web server fails to bind to port {PORT}/tcp."
+    },
+    {
+     "DIR": "",
+     "TYPE": "",
+     "BOOL": "",
+     "PORT": "9090",
+     "PTYPE": "http_port_t",
+     "WHAT": "a web server fails to bind to port {PORT}/tcp."
+    },
+    {
+     "DIR": "/srv/samba/data",
+     "TYPE": "samba_share_t",
+     "BOOL": "samba_enable_home_dirs",
+     "PORT": "",
+     "PTYPE": "",
+     "WHAT": "a Samba server cannot access the share directory {DIR} (it has files) and users cannot reach their home directories through it."
+    }
+   ]
+  },
+  {
+   "id": "dyn-selinux-relabel",
+   "kind": "ported",
+   "title": "Schedule a full relabel on the next boot",
+   "domain": 7,
+   "category": "selinux",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: schedule a full SELinux filesystem relabel for the next reboot by creating the file that triggers it. Do not reboot."
+  },
+  {
+   "id": "dyn-fw-enable",
+   "kind": "ported",
+   "title": "Re-enable a stopped firewalld",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the firewall is not running and will not start at boot. Start the firewalld service, enable it to start automatically at boot and verify with firewall-cmd --state."
+  },
+  {
+   "id": "dyn-fw-remove-service",
+   "kind": "ported",
+   "title": "Remove a service from a zone",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: remove the {SERVICE} service from the firewalld zone {ZONE}. The removal must be permanent and applied now (reload the firewall).",
+   "params": {
+    "SERVICE": {
+     "choice": [
+      "cockpit",
+      "dhcpv6-client",
+      "mdns",
+      "samba-client"
+     ]
+    },
+    "ZONE": {
+     "choice": [
+      "public"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fw-default-zone",
+   "kind": "ported",
+   "title": "Set the default zone",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: change the default firewalld zone to {ZONE}. The change must be permanent.",
+   "params": {
+    "ZONE": {
+     "choice": [
+      "public",
+      "internal",
+      "work",
+      "home",
+      "dmz"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fw-rich-rule",
+   "kind": "ported",
+   "title": "Add a rich rule",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: add this rich rule to the firewalld zone {ZONE}: {RULE} It must be permanent and active right now.",
+   "params": {
+    "ZONE": {
+     "choice": [
+      "public",
+      "internal"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "RULE": "rule family=\"ipv4\" source address=\"192.168.50.0/24\" service name=\"http\" accept"
+    },
+    {
+     "RULE": "rule family=\"ipv4\" source address=\"192.168.60.15\" service name=\"https\" accept"
+    },
+    {
+     "RULE": "rule family=\"ipv4\" source address=\"10.99.0.0/24\" service name=\"ssh\" reject"
+    },
+    {
+     "RULE": "rule family=\"ipv4\" source address=\"192.168.70.0/24\" service name=\"mysql\" drop"
+    },
+    {
+     "RULE": "rule family=\"ipv4\" source address=\"172.20.0.0/16\" service name=\"ftp\" accept"
+    }
+   ]
+  },
+  {
+   "id": "dyn-fw-reload",
+   "kind": "ported",
+   "title": "Permanent rule that was never reloaded",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the {SERVICE} service was added to the permanent firewall configuration, but it is not active yet: nobody ran a reload. Confirm the difference between permanent and runtime rules, apply the pending permanent rules and verify that {SERVICE} is active.",
+   "params": {
+    "SERVICE": {
+     "choice": [
+      "tftp",
+      "ntp",
+      "syslog",
+      "snmp"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-fw-troubleshoot",
+   "kind": "ported",
+   "title": "A service is not reachable through the firewall",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: a client cannot reach the {SERVICE} service (port {PORT}). Likely cause: {CAUSE}. Diagnose and fix the firewall so the service is accessible: it must be in the zone {ZONE} (permanent and active), the port must be open and firewalld must be running.",
+   "params": {
+    "ZONE": {
+     "choice": [
+      "public",
+      "internal",
+      "work"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "SERVICE": "http",
+     "PORT": "80/tcp",
+     "SCENARIO": "not_added",
+     "CAUSE": "the service was never added to the zone"
+    },
+    {
+     "SERVICE": "http",
+     "PORT": "80/tcp",
+     "SCENARIO": "wrong_zone",
+     "CAUSE": "the service was added to a different zone"
+    },
+    {
+     "SERVICE": "http",
+     "PORT": "80/tcp",
+     "SCENARIO": "not_reloaded",
+     "CAUSE": "the permanent rule was never reloaded"
+    },
+    {
+     "SERVICE": "http",
+     "PORT": "80/tcp",
+     "SCENARIO": "stopped",
+     "CAUSE": "the firewall is not running"
+    },
+    {
+     "SERVICE": "https",
+     "PORT": "443/tcp",
+     "SCENARIO": "not_added",
+     "CAUSE": "the service was never added to the zone"
+    },
+    {
+     "SERVICE": "https",
+     "PORT": "443/tcp",
+     "SCENARIO": "wrong_zone",
+     "CAUSE": "the service was added to a different zone"
+    },
+    {
+     "SERVICE": "https",
+     "PORT": "443/tcp",
+     "SCENARIO": "not_reloaded",
+     "CAUSE": "the permanent rule was never reloaded"
+    },
+    {
+     "SERVICE": "https",
+     "PORT": "443/tcp",
+     "SCENARIO": "stopped",
+     "CAUSE": "the firewall is not running"
+    },
+    {
+     "SERVICE": "nfs",
+     "PORT": "2049/tcp",
+     "SCENARIO": "not_added",
+     "CAUSE": "the service was never added to the zone"
+    },
+    {
+     "SERVICE": "nfs",
+     "PORT": "2049/tcp",
+     "SCENARIO": "wrong_zone",
+     "CAUSE": "the service was added to a different zone"
+    },
+    {
+     "SERVICE": "nfs",
+     "PORT": "2049/tcp",
+     "SCENARIO": "not_reloaded",
+     "CAUSE": "the permanent rule was never reloaded"
+    },
+    {
+     "SERVICE": "nfs",
+     "PORT": "2049/tcp",
+     "SCENARIO": "stopped",
+     "CAUSE": "the firewall is not running"
+    }
+   ]
+  },
+  {
+   "id": "dyn-fw-full-setup",
+   "kind": "ported",
+   "title": "Complete firewall configuration",
+   "domain": 7,
+   "category": "firewall",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "firewall@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: perform a complete firewall configuration: (1) enable and start firewalld; (2) set the default zone to {ZONE}; (3) add the services {SERVICES} to the zone {ZONE}; (4) open the ports {PORTS} in the zone {ZONE}; (5) reload the firewall. Every change must be permanent.",
+   "param_sets": [
+    {
+     "ZONE": "work",
+     "SERVICES": "http https",
+     "PORTS": "8080/tcp"
+    },
+    {
+     "ZONE": "internal",
+     "SERVICES": "http https ftp",
+     "PORTS": "8443/tcp 5353/udp"
+    },
+    {
+     "ZONE": "public",
+     "SERVICES": "smtp dns",
+     "PORTS": "3306/tcp"
+    },
+    {
+     "ZONE": "home",
+     "SERVICES": "mysql postgresql",
+     "PORTS": "9090/tcp"
+    },
+    {
+     "ZONE": "dmz",
+     "SERVICES": "http dns ftp",
+     "PORTS": "5432/tcp 8080/tcp"
+    },
+    {
+     "ZONE": "work",
+     "SERVICES": "https smtp",
+     "PORTS": "5353/udp 3306/tcp"
+    }
+   ]
+  },
+  {
+   "id": "dyn-svc-start",
+   "kind": "ported",
+   "title": "Start a service (without enabling)",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: start the service {SVC}.service so that it is running now. Do NOT enable it at boot.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labstart21",
+      "labstart47",
+      "labstart83"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-enable",
+   "kind": "ported",
+   "title": "Enable a service at boot",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: enable the service {SVC}.service so that it starts automatically at boot.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labenab21",
+      "labenab47",
+      "labenab83"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-start-enable",
+   "kind": "ported",
+   "title": "Start and enable a service",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: enable {SVC}.service so that it starts now and persistently at every boot.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labboth21",
+      "labboth47",
+      "labboth83"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-stop-disable",
+   "kind": "ported",
+   "title": "Stop and disable a service",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: stop the service {SVC}.service (it is running) and disable it so that it does NOT start at boot.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labstop21",
+      "labstop47",
+      "labstop83"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-mask",
+   "kind": "ported",
+   "title": "Mask a service",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: mask the service {SVC}.service: stop it if it is running and mask it so that it cannot be started by any means.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labmask21",
+      "labmask47",
+      "labmask83"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-troubleshoot",
+   "kind": "ported",
+   "title": "A service that fails to start",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: the service {SVC}.service fails to start (likely cause: {CAUSE}). Diagnose the problem, fix it, start the service and make sure it stays running.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labtrbl21",
+      "labtrbl47"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "SCENARIO": "badpath",
+     "CAUSE": "the ExecStart path is wrong"
+    },
+    {
+     "SCENARIO": "noexec",
+     "CAUSE": "the program it runs is not executable"
+    },
+    {
+     "SCENARIO": "baduser",
+     "CAUSE": "it runs as a user that does not exist"
+    },
+    {
+     "SCENARIO": "envfile",
+     "CAUSE": "it references an environment file that does not exist"
+    }
+   ]
+  },
+  {
+   "id": "dyn-svc-list-failed",
+   "kind": "ported",
+   "title": "List failed units and save them",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: list all systemd units that are in the failed state and save the output of that listing to {OUTFILE}.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labfail21",
+      "labfail47"
+     ]
+    },
+    "OUTFILE": {
+     "choice": [
+      "/tmp/failed_services.txt",
+      "/tmp/failed-units.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-dependencies",
+   "kind": "ported",
+   "title": "Record the dependency tree of a service",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: examine the dependency tree of {SVC}.service and save the full dependency listing to {OUTFILE}.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labdeps21",
+      "labdeps47"
+     ]
+    },
+    "OUTFILE": {
+     "choice": [
+      "/tmp/deps_tree.txt",
+      "/tmp/service-deps.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-restart-policy",
+   "kind": "ported",
+   "title": "Automatic restart through a drop-in",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: configure automatic restart for {SVC}.service: create a systemd drop-in override that sets Restart=always and RestartSec={RESTARTSEC}, reload systemd and make sure the service is running. The override must persist across reboots.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labrest21",
+      "labrest47"
+     ]
+    },
+    "RESTARTSEC": {
+     "choice": [
+      "5",
+      "10",
+      "15",
+      "30"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-svc-manage-proc",
+   "kind": "ported",
+   "title": "Find the main process of a service",
+   "domain": 6,
+   "category": "services",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: start the service {SVC}.service, find the PID of its main process and save that PID (only the number) to {PIDFILE}. The service must keep running.",
+   "params": {
+    "SVC": {
+     "choice": [
+      "labproc21",
+      "labproc47"
+     ]
+    },
+    "PIDFILE": {
+     "choice": [
+      "/tmp/labproc.pid",
+      "/tmp/service-main.pid"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-timer-create",
+   "kind": "ported",
+   "title": "A service + timer pair",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a systemd timer that runs a command on a schedule: timer {NAME}.timer, service {NAME}.service, command {CMD}, schedule (OnCalendar) {SCHEDDESC}. Place both unit files in /etc/systemd/system/, then enable and start the timer so that it persists across reboots.",
+   "param_sets": [
+    {
+     "NAME": "dynbackup",
+     "CMD": "/usr/local/bin/backup.sh",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynbackup",
+     "CMD": "/usr/local/bin/backup.sh",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dynbackup",
+     "CMD": "/usr/local/bin/backup.sh",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dynbackup",
+     "CMD": "/usr/local/bin/backup.sh",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dynbackup",
+     "CMD": "/usr/local/bin/backup.sh",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    },
+    {
+     "NAME": "dynreport",
+     "CMD": "/usr/bin/touch /tmp/dyn-report-ran",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynreport",
+     "CMD": "/usr/bin/touch /tmp/dyn-report-ran",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dynreport",
+     "CMD": "/usr/bin/touch /tmp/dyn-report-ran",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dynreport",
+     "CMD": "/usr/bin/touch /tmp/dyn-report-ran",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dynreport",
+     "CMD": "/usr/bin/touch /tmp/dyn-report-ran",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    },
+    {
+     "NAME": "dyncleanup",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dyncleanup",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dyncleanup",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dyncleanup",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dyncleanup",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    }
+   ]
+  },
+  {
+   "id": "dyn-timer-oncalendar",
+   "kind": "ported",
+   "title": "A timer with a calendar schedule",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a systemd timer with a specific real-time schedule: timer {NAME}.timer, service {NAME}.service, command {CMD}, schedule {SCHEDDESC} (OnCalendar). The timer must be enabled and started, and must persist across reboots (WantedBy=timers.target).",
+   "param_sets": [
+    {
+     "NAME": "dynaudit",
+     "CMD": "/usr/local/bin/audit.sh",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynaudit",
+     "CMD": "/usr/local/bin/audit.sh",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dynaudit",
+     "CMD": "/usr/local/bin/audit.sh",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dynaudit",
+     "CMD": "/usr/local/bin/audit.sh",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dynaudit",
+     "CMD": "/usr/local/bin/audit.sh",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    },
+    {
+     "NAME": "dyndigest",
+     "CMD": "/usr/bin/touch /tmp/dyn-digest-ran",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dyndigest",
+     "CMD": "/usr/bin/touch /tmp/dyn-digest-ran",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dyndigest",
+     "CMD": "/usr/bin/touch /tmp/dyn-digest-ran",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dyndigest",
+     "CMD": "/usr/bin/touch /tmp/dyn-digest-ran",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dyndigest",
+     "CMD": "/usr/bin/touch /tmp/dyn-digest-ran",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    },
+    {
+     "NAME": "dynrotate",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*-*-* 02:00:00",
+     "SCHEDDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynrotate",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "Mon..Fri *-*-* 06:30:00",
+     "SCHEDDESC": "on weekdays at 6:30 AM"
+    },
+    {
+     "NAME": "dynrotate",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*:0/15",
+     "SCHEDDESC": "every 15 minutes"
+    },
+    {
+     "NAME": "dynrotate",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "Sun *-*-* 00:00:00",
+     "SCHEDDESC": "every Sunday at midnight"
+    },
+    {
+     "NAME": "dynrotate",
+     "CMD": "/usr/bin/true",
+     "SCHEDULE": "*-*-01 12:00:00",
+     "SCHEDDESC": "on the 1st of every month at noon"
+    }
+   ]
+  },
+  {
+   "id": "dyn-timer-onboot",
+   "kind": "ported",
+   "title": "A timer that fires after boot",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a monotonic systemd timer that fires after boot: timer {NAME}.timer, service {NAME}.service, command {CMD}, firing {DELAY} after the system boots (OnBootSec). Enable the timer so it activates on every boot.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "dynwarmup",
+      "dyninit",
+      "dynsetup"
+     ]
+    },
+    "CMD": {
+     "choice": [
+      "/usr/local/bin/warmup.sh",
+      "/usr/bin/true"
+     ]
+    },
+    "DELAY": {
+     "choice": [
+      "5min",
+      "10min",
+      "30s",
+      "2min"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-timer-monotonic",
+   "kind": "ported",
+   "title": "A repeating monotonic timer",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: create a repeating monotonic systemd timer: timer {NAME}.timer, service {NAME}.service, command {CMD}, repeating every {INTERVAL} (OnUnitActiveSec) and also firing once {INTERVAL} after boot (OnBootSec). Enable and start the timer.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "dynpoll",
+      "dynsweep",
+      "dynping"
+     ]
+    },
+    "CMD": {
+     "choice": [
+      "/usr/local/bin/poll.sh",
+      "/usr/bin/true"
+     ]
+    },
+    "INTERVAL": {
+     "choice": [
+      "15min",
+      "30min",
+      "1h",
+      "5min"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-timer-list",
+   "kind": "ported",
+   "title": "List the active timers and save the output",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: save a listing of all active systemd timers, including their next and last trigger times, to {OUTFILE}.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "dynlist21",
+      "dynlist47"
+     ]
+    },
+    "OUTFILE": {
+     "choice": [
+      "/tmp/timers.txt",
+      "/tmp/active_timers.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-timer-enable",
+   "kind": "ported",
+   "title": "Enable and start an existing timer",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: enable and start the systemd timer {NAME}.timer: it must be enabled to start at boot and active right now, so that it survives a reboot.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "dynnight21",
+      "dynnight47"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-timer-cron-convert",
+   "kind": "ported",
+   "title": "Convert a cron job to a systemd timer",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: convert this cron job to a systemd timer: cron expression {CRON} ({CRONDESC}), command {CMD}. Create the timer {NAME}.timer and the service {NAME}.service in /etc/systemd/system/ with the equivalent OnCalendar schedule, then enable and start the timer.",
+   "param_sets": [
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "*/5 * * * *",
+     "ONCAL": "*:0/5",
+     "CRONDESC": "every 5 minutes"
+    },
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 2 * * *",
+     "ONCAL": "*-*-* 02:00:00",
+     "CRONDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "30 6 * * 1-5",
+     "ONCAL": "Mon..Fri *-*-* 06:30:00",
+     "CRONDESC": "at 6:30 AM on weekdays"
+    },
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 0 1 * *",
+     "ONCAL": "*-*-01 00:00:00",
+     "CRONDESC": "at midnight on the 1st of every month"
+    },
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 */4 * * *",
+     "ONCAL": "*-*-* 00/4:00:00",
+     "CRONDESC": "every 4 hours"
+    },
+    {
+     "NAME": "dynconv21",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "15 3 * * 0",
+     "ONCAL": "Sun *-*-* 03:15:00",
+     "CRONDESC": "at 3:15 AM every Sunday"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "*/5 * * * *",
+     "ONCAL": "*:0/5",
+     "CRONDESC": "every 5 minutes"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 2 * * *",
+     "ONCAL": "*-*-* 02:00:00",
+     "CRONDESC": "every day at 2:00 AM"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "30 6 * * 1-5",
+     "ONCAL": "Mon..Fri *-*-* 06:30:00",
+     "CRONDESC": "at 6:30 AM on weekdays"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 0 1 * *",
+     "ONCAL": "*-*-01 00:00:00",
+     "CRONDESC": "at midnight on the 1st of every month"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "0 */4 * * *",
+     "ONCAL": "*-*-* 00/4:00:00",
+     "CRONDESC": "every 4 hours"
+    },
+    {
+     "NAME": "dynconv47",
+     "CMD": "/usr/local/bin/migrated-task.sh",
+     "CRON": "15 3 * * 0",
+     "ONCAL": "Sun *-*-* 03:15:00",
+     "CRONDESC": "at 3:15 AM every Sunday"
+    }
+   ]
+  },
+  {
+   "id": "dyn-timer-troubleshoot",
+   "kind": "ported",
+   "title": "A timer that is not firing",
+   "domain": 6,
+   "category": "systemd_timers",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: the systemd timer {NAME}.timer is not firing as expected (likely cause: {CAUSE}). Diagnose and fix it: the timer must be enabled and active, and its service unit must exist and run {CMD}.",
+   "param_sets": [
+    {
+     "NAME": "dyntrbl21",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "bad_oncalendar",
+     "CAUSE": "the OnCalendar expression is invalid"
+    },
+    {
+     "NAME": "dyntrbl21",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "missing_service",
+     "CAUSE": "the service unit the timer triggers does not exist"
+    },
+    {
+     "NAME": "dyntrbl21",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "not_enabled",
+     "CAUSE": "the timer was never enabled or started"
+    },
+    {
+     "NAME": "dyntrbl21",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "wrong_unit",
+     "CAUSE": "the timer points at a unit that does not exist"
+    },
+    {
+     "NAME": "dyntrbl47",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "bad_oncalendar",
+     "CAUSE": "the OnCalendar expression is invalid"
+    },
+    {
+     "NAME": "dyntrbl47",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "missing_service",
+     "CAUSE": "the service unit the timer triggers does not exist"
+    },
+    {
+     "NAME": "dyntrbl47",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "not_enabled",
+     "CAUSE": "the timer was never enabled or started"
+    },
+    {
+     "NAME": "dyntrbl47",
+     "CMD": "/usr/local/bin/maintenance.sh",
+     "SCENARIO": "wrong_unit",
+     "CAUSE": "the timer points at a unit that does not exist"
+    }
+   ]
+  },
+  {
+   "id": "dyn-pkg-install",
+   "kind": "ported",
+   "title": "Install a package with dnf",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: install the package {PKG} with dnf. The lab repositories are already configured. The package must be installed when you finish (rpm -q).",
+   "params": {
+    "PKG": {
+     "choice": [
+      "tree",
+      "nano",
+      "wget",
+      "bind-utils",
+      "tcpdump"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-pkg-remove",
+   "kind": "ported",
+   "title": "Remove a package with dnf",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: remove the package {PKG} with dnf. The package must be gone when you finish (rpm -q must not find it).",
+   "params": {
+    "PKG": {
+     "choice": [
+      "wget",
+      "nano",
+      "bind-utils",
+      "tcpdump"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-pkg-query",
+   "kind": "ported",
+   "title": "Query package information",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: save the detailed information of the installed package {PKG} (name, version, summary...) in the file {OUT}.",
+   "params": {
+    "PKG": {
+     "choice": [
+      "wget",
+      "tcpdump",
+      "rsync",
+      "nano",
+      "bind-utils",
+      "openssh-server"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/pkg_info.txt",
+      "/root/pkg_info.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-pkg-provides",
+   "kind": "ported",
+   "title": "Find the package that provides a file",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: find out which package provides the file {TARGET} and save the command output in the file {OUT}.",
+   "params": {
+    "TARGET": {
+     "choice": [
+      "/usr/bin/wget",
+      "/usr/bin/dig",
+      "/usr/sbin/sshd",
+      "/etc/crontab",
+      "/usr/bin/rsync"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/package_provider.txt",
+      "/root/package_provider.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-pkg-history",
+   "kind": "ported",
+   "title": "Save the dnf transaction history",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: save the dnf transaction history (ID, command and date of each transaction) in the file {OUT}. The file must contain at least the latest 10 transactions.",
+   "params": {
+    "OUT": {
+     "choice": [
+      "/tmp/dnf_history.txt",
+      "/root/dnf_history.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-pkg-verify",
+   "kind": "ported",
+   "title": "Verify package integrity (rpm -V)",
+   "domain": 1,
+   "category": "packages",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: someone changed a configuration file of the package {PKG}. Verify the integrity of the package with rpm and save the verification output in the file {OUT}. The output must show the changed file.",
+   "params": {
+    "OUT": {
+     "choice": [
+      "/tmp/rpm_verify.txt",
+      "/root/rpm_verify.txt"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "PKG": "wget",
+     "CONF": "/etc/wgetrc"
+    },
+    {
+     "PKG": "nano",
+     "CONF": "/etc/nanorc"
+    }
+   ]
+  },
+  {
+   "id": "dyn-repo-configure",
+   "kind": "ported",
+   "title": "Configure a dnf repository",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: create the dnf repository {REPOID} in the file /etc/yum.repos.d/{REPOID}.repo with name \"{REPONAME}\", base URL {URL}, enabled, and gpgcheck={GPG}. Confirm that dnf lists it (dnf repolist).",
+   "params": {
+    "REPOID": {
+     "choice": [
+      "labrepo",
+      "examrepo",
+      "localrepo",
+      "dynbase"
+     ]
+    },
+    "REPONAME": {
+     "choice": [
+      "Lab Repository",
+      "Exam Mirror",
+      "Local Mirror"
+     ]
+    },
+    "URL": {
+     "choice": [
+      "http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS",
+      "http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream",
+      "http://content.example.com:8091/timer-repo"
+     ]
+    },
+    "GPG": {
+     "choice": [
+      "0",
+      "1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-repo-enable-disable",
+   "kind": "ported",
+   "title": "Enable or disable a repository",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the repository {REPOID} is defined in /etc/yum.repos.d/. Persistently {ACTION} it, so that the change survives a reboot. Confirm with dnf repolist.",
+   "params": {
+    "REPOID": {
+     "choice": [
+      "labtools",
+      "labextra"
+     ]
+    },
+    "ACTION": {
+     "choice": [
+      "enable",
+      "disable"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-repo-baseos-appstream",
+   "kind": "ported",
+   "title": "Configure BaseOS and AppStream repositories",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: configure two persistent repositories: {BASEID} with base URL http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS and {APPID} with base URL http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream. Both must be enabled (gpgcheck=0).",
+   "param_sets": [
+    {
+     "BASEID": "lab-baseos",
+     "APPID": "lab-appstream"
+    },
+    {
+     "BASEID": "baseos",
+     "APPID": "appstream"
+    },
+    {
+     "BASEID": "BaseOS",
+     "APPID": "AppStream"
+    },
+    {
+     "BASEID": "local-baseos",
+     "APPID": "local-appstream"
+    }
+   ]
+  },
+  {
+   "id": "dyn-repo-troubleshoot",
+   "kind": "ported",
+   "title": "Fix a broken repository",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the repository dyn-broken (file /etc/yum.repos.d/dyn-broken.repo) does not work. Fix it so that dnf can use it: it must point to http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream and be enabled.",
+   "params": {
+    "SCEN": {
+     "choice": [
+      "wrongurl",
+      "nobaseurl",
+      "disabled",
+      "badscheme"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-repo-thirdparty",
+   "kind": "ported",
+   "title": "Add a third-party repository",
+   "domain": 1,
+   "category": "repos",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "repo@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: add the third-party repository {REPOID} with name \"{REPONAME}\" and base URL http://content.example.com:8091/timer-repo, enabled, with gpgcheck=0 (its packages are not signed). Then install the package logger from it.",
+   "params": {
+    "REPOID": {
+     "choice": [
+      "thirdparty",
+      "extras",
+      "vendorrepo"
+     ]
+    },
+    "REPONAME": {
+     "choice": [
+      "Third Party Repo",
+      "Vendor Packages",
+      "Extra Tools"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-flatpak-remote",
+   "kind": "ported",
+   "title": "Add a Flatpak remote",
+   "domain": 1,
+   "category": "flatpak",
+   "hosts": [
+    "servera"
+   ],
+   "order": 30,
+   "conflicts": [
+    "flatpak@servera"
+   ],
+   "console": false,
+   "statement": "On {host}: add a system-wide Flatpak remote named {NAME} using http://flatpak.lab.example.com:8091/myrepo.flatpakrepo.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "labflat",
+      "appsrepo",
+      "classflat"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-flatpak-install",
+   "kind": "ported",
+   "title": "Install a Flatpak application",
+   "domain": 1,
+   "category": "flatpak",
+   "hosts": [
+    "servera"
+   ],
+   "order": 30,
+   "conflicts": [
+    "flatpak@servera"
+   ],
+   "console": false,
+   "statement": "On {host}: the system-wide Flatpak remote {NAME} is already configured. Install the application {APP} from it, system-wide. (The installation takes about a minute.)",
+   "params": {
+    "NAME": {
+     "choice": [
+      "labflat",
+      "appsrepo"
+     ]
+    },
+    "APP": {
+     "choice": [
+      "com.vscodium.codium",
+      "md.obsidian.Obsidian"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-flatpak-remove",
+   "kind": "ported",
+   "title": "Remove a Flatpak application",
+   "domain": 1,
+   "category": "flatpak",
+   "hosts": [
+    "servera"
+   ],
+   "order": 30,
+   "conflicts": [
+    "flatpak@servera"
+   ],
+   "console": false,
+   "statement": "On {host}: the Flatpak application {APP} is installed system-wide (from the remote {NAME}). Remove it, and also remove the runtimes that were installed with it and are no longer used.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "labflat",
+      "appsrepo"
+     ]
+    },
+    "APP": {
+     "choice": [
+      "com.vscodium.codium",
+      "md.obsidian.Obsidian"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-flatpak-list",
+   "kind": "ported",
+   "title": "List what a Flatpak remote offers",
+   "domain": 1,
+   "category": "flatpak",
+   "hosts": [
+    "servera"
+   ],
+   "order": 30,
+   "conflicts": [
+    "flatpak@servera"
+   ],
+   "console": false,
+   "statement": "On {host}: the system-wide Flatpak remote {NAME} is configured. Save in the file {OUT} the list of the {MODE}s that this remote offers (flatpak remote-ls).",
+   "params": {
+    "NAME": {
+     "choice": [
+      "labflat",
+      "appsrepo"
+     ]
+    },
+    "MODE": {
+     "choice": [
+      "app",
+      "runtime"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/flatpak_list.txt",
+      "/root/flatpak_list.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-static-ip",
+   "kind": "ported",
+   "title": "Static IPv4 on a connection",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The NetworkManager connection {NAME} is already bound to dyn0 but is not configured. Give it the static IPv4 address {ADDR} (manual method), make it start automatically and activate it now.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-dhcp",
+   "kind": "ported",
+   "title": "Switch a connection to DHCP",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} has the static address {ADDR}. Change it to obtain IPv4 by DHCP (remove the static address) and make it start automatically. You do not need to activate it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-dns",
+   "kind": "ported",
+   "title": "DNS servers on a connection",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} is active with {ADDR}. Configure the DNS servers {DNS1} and {DNS2} (in this order) and apply it, so that /etc/resolv.conf uses both.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "DNS1": "192.168.56.1",
+     "DNS2": "8.8.8.8"
+    },
+    {
+     "DNS1": "8.8.8.8",
+     "DNS2": "192.168.56.1"
+    },
+    {
+     "DNS1": "1.1.1.1",
+     "DNS2": "8.8.4.4"
+    }
+   ]
+  },
+  {
+   "id": "dyn-net-newconn",
+   "kind": "ported",
+   "title": "Create a new connection",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. There is no connection on dyn0 yet. Create one named {NAME} (nmcli con add type dummy ifname dyn0 ...) with the static IPv4 address {ADDR}, the DNS server {DNS1} and autoconnect, and activate it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "DNS1": {
+     "choice": [
+      "192.168.56.1",
+      "8.8.8.8"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-ipv6",
+   "kind": "ported",
+   "title": "Static IPv6 address",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} is active with {ADDR} (IPv4). Add the static IPv6 address {ADDR6} (manual method), keeping the IPv4 address, and apply it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "ADDR6": {
+     "choice": [
+      "fd00:77::21/64",
+      "fd00:77::5/64",
+      "fd00:78::10/64"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-search-domain",
+   "kind": "ported",
+   "title": "DNS search domain",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} is active with {ADDR}. Add the DNS search domain {DOM} to it and apply it, so that /etc/resolv.conf shows it in the search line.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "DOM": {
+     "choice": [
+      "lab.example.org",
+      "corp.example.net",
+      "homelab.example.com"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-restart",
+   "kind": "ported",
+   "title": "Apply a change by restarting the connection",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} was edited (its profile now says {ADDR2}) but the interface still runs with the old address. Restart the connection so that dyn0 uses the address of the profile.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    }
+   },
+   "param_sets": [
+    {
+     "ADDR": "192.168.77.21/24",
+     "ADDR2": "192.168.77.121/24"
+    },
+    {
+     "ADDR": "192.168.77.34/24",
+     "ADDR2": "192.168.77.134/24"
+    }
+   ]
+  },
+  {
+   "id": "dyn-net-info",
+   "kind": "ported",
+   "title": "Save the interface network information",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} is active with {ADDR}. Save the NetworkManager device information of dyn0 (nmcli device show dyn0) in the file {OUT}.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/netinfo.txt",
+      "/root/netinfo.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-verify",
+   "kind": "ported",
+   "title": "Verify connectivity",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: test the connectivity to {TARGET} sending exactly {COUNT} ICMP packets and save the complete output of the command in the file {OUT}.",
+   "params": {
+    "TARGET": {
+     "choice": [
+      "192.168.56.1",
+      "192.168.56.1"
+     ]
+    },
+    "COUNT": {
+     "choice": [
+      "3",
+      "4",
+      "5"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/ping_result.txt",
+      "/root/ping_result.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-troubleshoot",
+   "kind": "ported",
+   "title": "Fix a broken connection",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} should give dyn0 the static address {ADDR} (manual method), start automatically and be active, but it is broken. Find the problem and fix it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "SCEN": {
+     "choice": [
+      "badprefix",
+      "disabled",
+      "noauto",
+      "wrongif"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-route",
+   "kind": "ported",
+   "title": "Static route",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. The connection {NAME} is active with {ADDR}. Add the persistent static route {RNET} via {RGW} to it (not a default route) and apply it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "RNET": {
+     "choice": [
+      "10.88.0.0/24",
+      "10.99.0.0/16",
+      "172.31.50.0/24"
+     ]
+    },
+    "RGW": {
+     "choice": [
+      "192.168.77.1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-net-full-setup",
+   "kind": "ported",
+   "title": "Full connection setup",
+   "domain": 5,
+   "category": "networking",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "nic-dyn0@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the virtual interface dyn0 (type dummy) is used for this exercise; never touch ens18. There is no connection on dyn0 yet. Create the connection {NAME} (type dummy) with: static IPv4 {ADDR}, DNS server {DNS1}, search domain {DOM}, the static route {RNET} via {RGW} (not a default route) and autoconnect. Activate it.",
+   "params": {
+    "NAME": {
+     "choice": [
+      "lab-link",
+      "prof-dyn",
+      "test-net"
+     ]
+    },
+    "ADDR": {
+     "choice": [
+      "192.168.77.21/24",
+      "192.168.77.34/24"
+     ]
+    },
+    "DNS1": {
+     "choice": [
+      "192.168.56.1",
+      "8.8.8.8"
+     ]
+    },
+    "DOM": {
+     "choice": [
+      "lab.example.org",
+      "corp.example.net"
+     ]
+    },
+    "RNET": {
+     "choice": [
+      "10.88.0.0/24",
+      "10.99.0.0/16"
+     ]
+    },
+    "RGW": {
+     "choice": [
+      "192.168.77.1"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-grub-timeout",
+   "kind": "ported",
+   "title": "GRUB menu timeout",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "grub@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: set the GRUB boot menu timeout to {TIMEOUT} seconds. Edit /etc/default/grub and regenerate the GRUB configuration (/boot/grub2/grub.cfg), so that the change persists across reboots. Do not reboot.",
+   "params": {
+    "TIMEOUT": {
+     "choice": [
+      "3",
+      "8",
+      "10",
+      "15",
+      "20"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-kernel-param-add",
+   "kind": "ported",
+   "title": "Add a kernel boot argument",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "grub@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: add the kernel argument {KARG} to the kernel command line of the default boot entry, so that it is applied on the next boot and stays there. Do not reboot.",
+   "params": {
+    "KARG": {
+     "choice": [
+      "audit=1",
+      "nofb",
+      "biosdevname=0",
+      "loglevel=5",
+      "transparent_hugepage=never"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-kernel-param-remove",
+   "kind": "ported",
+   "title": "Remove a kernel boot argument",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "grub@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the kernel argument {KARG} was added to the kernel command line of the default boot entry. Remove it, so that it is not applied on the next boot. Do not reboot.",
+   "params": {
+    "KARG": {
+     "choice": [
+      "nofb",
+      "audit=0",
+      "biosdevname=0",
+      "nosplash"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-boot-troubleshoot",
+   "kind": "ported",
+   "title": "Fix the boot configuration",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "grub@{host}",
+    "default-target@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the boot configuration was changed by mistake. Make it correct again and persistent: default systemd target {TARGET}; GRUB menu timeout {TIMEOUT} seconds (regenerate the GRUB configuration); and the kernel argument {KARG} must be {KTXT} in the default boot entry. Do not reboot.",
+   "param_sets": [
+    {
+     "TARGET": "multi-user.target",
+     "WRONGT": "graphical.target",
+     "TIMEOUT": "8",
+     "WRONGTO": "30",
+     "KARG": "audit=1",
+     "KMODE": "add",
+     "KTXT": "present"
+    },
+    {
+     "TARGET": "graphical.target",
+     "WRONGT": "multi-user.target",
+     "TIMEOUT": "10",
+     "WRONGTO": "1",
+     "KARG": "nofb",
+     "KMODE": "remove",
+     "KTXT": "absent"
+    },
+    {
+     "TARGET": "multi-user.target",
+     "WRONGT": "graphical.target",
+     "TIMEOUT": "15",
+     "WRONGTO": "2",
+     "KARG": "loglevel=5",
+     "KMODE": "add",
+     "KTXT": "present"
+    }
+   ]
+  },
+  {
+   "id": "dyn-fstab-fix",
+   "kind": "ported",
+   "title": "Fix a broken fstab entry",
+   "domain": 2,
+   "category": "boot_recovery",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "fstab@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: /etc/fstab has an entry for {MP} that points to {DEV} ({FS}), a device that does not exist, and the machine would not boot cleanly. Fix /etc/fstab: remove or comment out the entry, or keep it with the nofail option. findmnt --verify must report no error (a warning for an absent device that has nofail is fine).",
+   "param_sets": [
+    {
+     "MP": "/mnt/dyndata",
+     "DEV": "/dev/vdz1",
+     "FS": "xfs"
+    },
+    {
+     "MP": "/mnt/dynbackup",
+     "DEV": "UUID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+     "FS": "ext4"
+    },
+    {
+     "MP": "/mnt/dynopt",
+     "DEV": "/dev/mapper/vg_missing-lv_data",
+     "FS": "xfs"
+    },
+    {
+     "MP": "/mnt/dynext",
+     "DEV": "/dev/vdy1",
+     "FS": "vfat"
+    }
+   ]
+  },
+  {
+   "id": "dyn-fstab-validate",
+   "kind": "ported",
+   "title": "Validate and repair fstab",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "fstab@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: /etc/fstab has two bad entries and the machine could drop to the emergency shell on the next boot. The entry for {MP1} uses the UUID {UUID1}, which does not exist on any disk: remove (or comment out) that entry. The entry for {MP2} ({DEV2}) is an optional device that may be absent at boot: keep the entry, but make sure a missing device does not block the boot. findmnt --verify must report no error for them (a warning for an absent device that has nofail is fine).",
+   "param_sets": [
+    {
+     "MP1": "/mnt/dynold",
+     "UUID1": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+     "MP2": "/mnt/dynbackup",
+     "DEV2": "/dev/vdz1"
+    },
+    {
+     "MP1": "/mnt/dyndata",
+     "UUID1": "11111111-2222-3333-4444-555555555555",
+     "MP2": "/mnt/dynextra",
+     "DEV2": "/dev/vdy1"
+    }
+   ]
+  },
+  {
+   "id": "dyn-boot-analyze",
+   "kind": "ported",
+   "title": "Analyze the boot time",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: save in the file {OUT} the total boot time (systemd-analyze) and the {TOPN} slowest units of the boot (systemd-analyze blame).",
+   "params": {
+    "OUT": {
+     "choice": [
+      "/tmp/boot_analysis.txt",
+      "/root/boot_analysis.txt"
+     ]
+    },
+    "TOPN": {
+     "choice": [
+      "5",
+      "8",
+      "10"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-boot-entries",
+   "kind": "ported",
+   "title": "List the boot entries",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [],
+   "console": false,
+   "statement": "On {host}: save in the file {OUT} the list of all boot entries (kernels) and the identification of the default kernel (grubby).",
+   "params": {
+    "OUT": {
+     "choice": [
+      "/tmp/boot_entries.txt",
+      "/root/grub_entries.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-initramfs-rebuild",
+   "kind": "ported",
+   "title": "Rebuild the initramfs",
+   "domain": 2,
+   "category": "boot",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "initramfs@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: rebuild the initramfs image of the running kernel (dracut) and check that it was updated. Do not reboot."
+  },
+  {
+   "id": "dyn-chroot-practice",
+   "kind": "ported",
+   "title": "Prepare a chroot with bind mounts",
+   "domain": 2,
+   "category": "boot_recovery",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "chroot@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: prepare a chroot environment for system recovery in {CHROOT}: create the directory and its subdirectories {MOUNTS}, and bind-mount (mount --bind) the host /<name> of each one onto {CHROOT}/<name>. All the mounts must be active when you finish.",
+   "param_sets": [
+    {
+     "CHROOT": "/mnt/sysimage",
+     "MOUNTS": "proc,sys,dev"
+    },
+    {
+     "CHROOT": "/mnt/recovery",
+     "MOUNTS": "proc,sys,dev,run"
+    },
+    {
+     "CHROOT": "/tmp/chroot_test",
+     "MOUNTS": "proc,sys,dev,dev/pts"
+    }
+   ]
+  },
+  {
+   "id": "dyn-emergency-target",
+   "kind": "ported",
+   "title": "Default boot target: emergency or rescue",
+   "domain": 2,
+   "category": "boot_recovery",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "default-target@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: make {TARGET} the default systemd target, persistently (for this exercise the system will not be rebooted).",
+   "params": {
+    "TARGET": {
+     "choice": [
+      "emergency.target",
+      "rescue.target"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-ro-root",
+   "kind": "ported",
+   "title": "Recover a read-only filesystem",
+   "domain": 2,
+   "category": "boot_recovery",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "dynro@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: the filesystem mounted on /mnt/dynro (an image file) is read-only. Remount it read-write without unmounting it, then prove it works by creating the file {FILE} with exactly the content \"{CONTENT}\". It must stay mounted read-write.",
+   "param_sets": [
+    {
+     "FILE": "/mnt/dynro/recovery_marker.txt",
+     "CONTENT": "recovery complete"
+    },
+    {
+     "FILE": "/mnt/dynro/rw_confirmed",
+     "CONTENT": "root rw confirmed"
+    },
+    {
+     "FILE": "/mnt/dynro/rw_test_passed",
+     "CONTENT": "filesystem is writable"
+    }
+   ]
+  },
+  {
+   "id": "dyn-journal-boot-log",
+   "kind": "ported",
+   "title": "Boot log by priority",
+   "domain": 2,
+   "category": "journalctl",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "journald@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: save in the file {OUT} the messages of the current boot with priority {PRIO} or higher (journalctl -b 0 -p {PRIO} --no-pager).",
+   "params": {
+    "PRIO": {
+     "choice": [
+      "err",
+      "warning"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/boot_errors.log",
+      "/root/boot_issues.txt"
+     ]
+    }
+   }
+  },
+  {
+   "id": "dyn-journal-filter-unit",
+   "kind": "ported",
+   "title": "Journal of one unit",
+   "domain": 2,
+   "category": "journalctl",
+   "hosts": [
+    "servera",
+    "serverb"
+   ],
+   "order": 30,
+   "conflicts": [
+    "journald@{host}"
+   ],
+   "console": false,
+   "statement": "On {host}: save in the file {OUT} the journal entries of the unit {UNIT}.service (journalctl -u).",
+   "params": {
+    "UNIT": {
+     "choice": [
+      "sshd",
+      "crond",
+      "chronyd",
+      "firewalld",
+      "NetworkManager",
+      "systemd-logind"
+     ]
+    },
+    "OUT": {
+     "choice": [
+      "/tmp/unit_journal.log",
+      "/root/journal_unit.txt"
+     ]
+    }
+   }
+  }
+ ]
+}

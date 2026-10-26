@@ -1,0 +1,115 @@
+===============================================================================
+ PROVA COMPLETA RHCSA (EX200) — examsim-full — 24 questões — tempo sugerido 3h
+===============================================================================
+ node1 = servera (ssh servera · 192.168.56.20)
+ node2 = serverb (ssh serverb · 192.168.56.30 · console: virsh console rhcsa-lab-serverb)
+ NFS   = workstation.lab.example.com (192.168.56.10)
+
+ Regras:
+ - Tudo deve ficar PERSISTENTE (sobreviver a reboot), como na prova real.
+ - A correção acontece só no final: lab finish examsim-full
+   (avalia as 24 questões, salva o relatório e limpa o ambiente).
+ - Referência de aprovação: 17/24 (70%).
+ - O servera começa SEM repositórios: resolva a questão 3 antes de instalar
+   qualquer pacote.
+ - Senha de exercício para contas pedidas: atenorth
+
+-------------------------------------------------------------------------------
+ node1 — servera
+-------------------------------------------------------------------------------
+Q01 Flatpak — Adicione um remote Flatpak de SISTEMA chamado examrepo usando
+    http://flatpak.lab.example.com:8091/myrepo.flatpakrepo e instale dele,
+    em nível de sistema, o aplicativo com.vscodium.codium.
+
+Q02 Rede — Configure o hostname primary.net1.example.com. Configure a
+    interface ens19 com IP 192.168.56.91/24, gateway 192.168.56.1 e DNS
+    192.168.56.1, de forma persistente. NÃO altere a ens18 (gerência).
+
+Q03 Repositórios — Configure repositórios persistentes:
+      BaseOS    http://content.example.com:8091/rhel10.0/x86_64/dvd/BaseOS
+      AppStream http://content.example.com:8091/rhel10.0/x86_64/dvd/AppStream
+
+Q04 SELinux — O httpd deve servir na porta 82 (http://localhost:82/file1).
+    Não desabilite o SELinux, não altere o contexto de /var/www/html,
+    corrija o contexto de /var/www/html/file1 e deixe o serviço ativo e
+    habilitado no boot.
+
+Q05 Usuários — Crie o grupo sysadmin. natasha e harry devem ter sysadmin
+    como grupo secundário. sarah não pertence a sysadmin e não tem shell
+    interativo. Senha das três: atenorth.
+
+Q06 Diretório colaborativo — Crie /common/admin com grupo sysadmin; dono e
+    grupo leem e gravam, outros sem acesso; arquivos novos herdam o grupo.
+
+Q07 Cron — natasha: /bin/echo hello todo dia às 14:23 (hora local).
+    harry: /usr/bin/logger "EX200 in progress" a cada 3 minutos.
+
+Q08 Backup — Crie /home/backup.tar.bz2 com o conteúdo de /etc (tar+bzip2).
+
+Q09 NTP — Configure o chrony como cliente de classroom.example.com, com o
+    chronyd ativo e habilitado.
+
+Q10 find — Copie todos os arquivos do usuário Simone para /root/found.
+
+Q11 grep — Salve em /searchfile todas as linhas de /usr/share/dict/words
+    que contêm strato (sem cabeçalhos nem linhas extras).
+
+Q12 autofs — O home de remoteuser2 é exportado por
+    workstation.lab.example.com em /ourhome/remoteuser2. Configure o autofs
+    no servera para montá-lo sob demanda em /home/remoteuser2, gravável
+    pelo usuário.
+
+Q13 Usuário — Crie barry com UID 2112 e senha atenorth.
+
+Q14 Script + umask — Crie o executável /usr/local/bin/newsearch que
+    localiza sob /usr os arquivos SUID entre 30k e 50k e grava a lista em
+    /root/myoutput (execute-o). Configure para o usuário alex um umask
+    persistente que gere arquivos r--r--r-- e diretórios r-xr-xr-x.
+
+Q15 Timer + ACL — (a) Instale o pacote logger pelo repositório timer.repo
+    (/etc/yum.repos.d/timer.repo). Ajuste /usr/local/bin/logger para
+    registrar em /var/tmp/ex200 e gravar saída em /root/lookup_directory/ex200.
+    Crie um serviço systemd para ele e um timer que o execute a cada minuto,
+    habilitado e ativo. (b) Copie /etc/fstab para /var/tmp/fstab (root:root,
+    ninguém com execução): natasha lê e grava, harry sem acesso nenhum,
+    demais usuários (atuais e futuros) só leitura.
+
+Q21 Shell script — Crie o executável /usr/local/bin/userinfo:
+      - sem argumentos: mensagem de uso no stderr e sai com código 1;
+      - para cada usuário recebido (laço for): se existir, imprime
+        <usuario>:<uid>:<home> no stdout; se não existir, imprime
+        "<usuario>: inexistente" no stderr e continua;
+      - termina com código 2 se algum usuário não existia, senão 0.
+    Ex.: userinfo root nobody  ->  root:0:/root  e  nobody:65534:/
+
+Q23 tuned — Instale o tuned, deixe o serviço ativo e habilitado no boot e
+    ative o perfil throughput-performance.
+
+-------------------------------------------------------------------------------
+ node2 — serverb      (discos de prática: 1 GiB = @DISCO1@ · 6 GiB = @DISCO6@)
+ Nomes no momento do start. Após o reboot da Q16 os sdX podem trocar:
+ confira com lsblk pelo TAMANHO e use UUID no fstab.
+-------------------------------------------------------------------------------
+Q16 Root — Você não sabe a senha de root do serverb. Recupere o acesso pelo
+    console (virsh console rhcsa-lab-serverb) e defina a senha de root como atenorth. Ao final o
+    SELinux deve continuar Enforcing e sem arquivos com contexto errado.
+
+Q17 Repositórios — Configure no serverb os mesmos repositórios da Q03.
+
+Q18 tuned — Ative o perfil tuned RECOMENDADO para o serverb.
+
+Q19 Swap — A partição @DISCO1@1 (~250 MiB) já existe. Transforme-a em swap
+    e ative-a de forma persistente.
+
+Q20 LVM — No espaço livre de @DISCO6@, crie o VG myvg com PE de 8 MiB e o
+    LV mydatabase com 50 extents, formatado em vfat e montado de forma
+    persistente em /database.
+
+Q22 Resize — Redimensione o LV home do VG vg_home (montado em
+    /mnt/examsim-home) para 152 MB (38 extents), sem perder os dados.
+
+Q24 vgextend — O LV lv_data do VG vg_data (xfs, /mnt/examsim-data) tem
+    300 MiB e o VG está sem espaço. Crie uma nova partição no espaço livre
+    de @DISCO6@, adicione-a ao vg_data e estenda lv_data para 600 MiB com o
+    filesystem acompanhando, sem perder os dados.
+===============================================================================

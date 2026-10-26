@@ -1,11 +1,66 @@
 ---
-# Valores de fallback -- normalmente TODOS estes vêm do inventário que o
-# Terraform gera a partir de machines.yaml (output/inventory.yml, seção
-# all.vars). Só são usados se o playbook for rodado com outro inventário.
-lab_domain: lab.example.com
-lab_student_user: student
-lab_network_cidr: 192.168.56.0/24
-dashboard_host: workstation
-dashboard_port: 8421
-dashboard_allowed_source: 192.168.56.0/24
+# Variáveis compartilhadas do lab (dono: infra/A1; os outros roles só
+# consomem). Topologia derivada de machines.yaml (fonte única, também lida
+# pelo Terraform) -- nada de IP duplicado aqui. Atenção: group_vars/ ao lado
+# do playbook tem PRECEDÊNCIA MAIOR que as vars do inventário gerado
+# (output/inventory.yml), então os valores abaixo são os que valem.
+# Tabela de tradução do porte: servera 192.168.10.132 -> .56.20, serverb
+# .10.135 -> .56.30, workstation .10.137 -> .56.10, classroom (LXC 205,
+# .10.19) -> workstation, gateway .10.1 e DNS .10.30 -> .56.1 (host libvirt),
+# IP de prática da ens19 .10.91 -> .56.91.
+
+lab_spec: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/../machines.yaml') | from_yaml }}"
+
+# --- Topologia ------------------------------------------------------------
+lab_domain: "{{ lab_spec.domain }}"
+lab_student_user: "{{ lab_spec.student.username }}"
+lab_network_cidr: "{{ lab_spec.network.cidr }}"
+# {servera: 192.168.56.20, serverb: 192.168.56.30, workstation: 192.168.56.10}
+lab_hosts_ip: "{{ dict(lab_spec.machines | dict2items | map(attribute='key') | zip(lab_spec.machines | dict2items | map(attribute='value.ip'))) }}"
+workstation_ip: "{{ lab_hosts_ip.workstation }}"
+servera_ip: "{{ lab_hosts_ip.servera }}"
+serverb_ip: "{{ lab_hosts_ip.serverb }}"
+lab_gateway_ip: "{{ lab_spec.network.gateway }}" # homelab 192.168.10.1
+lab_dns_ip: "{{ lab_spec.network.dns[0] }}" # homelab 192.168.10.30
+# DNS gravado no perfil NM "ens18" (homelab: 192.168.10.30,8.8.8.8).
+lab_dns_servers: "{{ lab_spec.network.dns }}"
+examsim_net_ip: 192.168.56.91 # homelab 192.168.10.91 (2a NIC da servera)
+
+# "classroom" do homelab (LXC 205: mirror :8091, flatpak, NTP) roda na
+# workstation (role `classroom`).
+classroom_host: "{{ lab_spec.classroom.host }}"
+classroom_ip: "{{ lab_hosts_ip[classroom_host] }}" # homelab 192.168.10.19
+classroom_port: "{{ lab_spec.classroom.port }}"
+classroom_names:
+  - content.example.com
+  - classroom.example.com
+  - repo.example.com
+  - flatpak.lab.example.com
+# Monta o repositório OSTree "myrepo" (codium + Obsidian + runtimes) a
+# partir do Flathub no provisionamento (~1,6 GB, exige internet na rede NAT
+# do libvirt). false = vhost flatpak.lab.example.com sobe vazio e os
+# exercícios de flatpak (examsim-flatpak, dyn-flatpak-*) não funcionam.
+flatpak_mirror_enabled: "{{ lookup('ansible.builtin.env', 'FLATPAK_MIRROR_ENABLED') | default('true', true) | bool }}"
+
+# --- Dashboard -------------------------------------------------------------
+dashboard_host: "{{ lab_spec.dashboard.host }}"
+dashboard_port: "{{ lab_spec.dashboard.port }}"
+dashboard_allowed_source: "{{ lab_spec.dashboard.allowed_source }}"
 dashboard_bind_host: "0.0.0.0"
+
+# Senha de root das 3 VMs (LAB_ROOT_PASSWORD do .env). Vazia = root fica
+# travado como na imagem golden (entra só por chave). O dashboard também a
+# usa para mascarar a credencial nas saídas.
+lab_root_password: "{{ lookup('ansible.builtin.env', 'LAB_ROOT_PASSWORD') }}"
+dashboard_root_password: "{{ lab_root_password }}"
+
+# --- Revisão por IA e gravação de terminal (role ai_review, opcionais) -----
+ai_review_enabled: "{{ lookup('ansible.builtin.env', 'AI_REVIEW_ENABLED') | default('false', true) | bool }}"
+rhcsa_recording_enabled: "{{ lookup('ansible.builtin.env', 'RHCSA_RECORDING_ENABLED') | default('false', true) | bool }}"
+
+# --- Mídia/repositórios durante o deploy ------------------------------------
+# URL HTTP da DVD ISO servida pelo host (scripts/offline-repo.sh, sempre
+# ligado por `make provision`/`make provision-offline`): fonte dos RPMs do
+# mirror parcial do classroom. O Makefile passa -e; vazio = classroom sem
+# mirror de pacotes (avisa e segue).
+lab_iso_url: ""

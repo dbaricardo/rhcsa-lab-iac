@@ -1,0 +1,10 @@
+---
+- name: Reiniciar nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+
+- name: Reiniciar chronyd
+  ansible.builtin.systemd:
+    name: chronyd
+    state: restarted

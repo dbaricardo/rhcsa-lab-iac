@@ -1,7 +1,23 @@
+# Loopback entries; do not change.
+# For historical reasons, localhost precedes localhost.localdomain:
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 
-# Gerenciado pelo Ansible (role common) -- não editar manualmente.
-{% for name, spec in lab_machines.items() %}
-{{ spec.ip }}   {{ name }}.{{ lab_domain }} {{ name }}
+{% for name in ['servera', 'serverb', 'workstation'] %}
+{{ lab_hosts_ip[name] }} {{ name }}.{{ lab_domain }} {{ name }}
 {% endfor %}
+{#
+  Linhas do "classroom" exatamente como nas VMs do homelab (2026-10-16),
+  inclusive as diferenças por host (são o que os `lab start` gravaram e o
+  que os greps deles esperam), só com 192.168.10.19 -> classroom_ip.
+#}
+{% if inventory_hostname == 'servera' %}
+{{ classroom_ip }} flatpak.lab.example.com
+{{ classroom_ip }} content.example.com classroom.example.com
+{% elif inventory_hostname == 'serverb' %}
+{{ classroom_ip }}  repo.example.com flatpak.lab.example.com
+{{ classroom_ip }} repo.example.com
+{{ classroom_ip }} content.example.com classroom.example.com
+{% else %}
+{{ classroom_ip }} repo.example.com flatpak.lab.example.com
+{% endif %}
