@@ -34,7 +34,7 @@ Se não retornar nada, habilite VT-x/AMD-V na BIOS/UEFI antes de continuar.
 ```bash
 sudo dnf install -y @virtualization libvirt libvirt-daemon-kvm \
   virt-install guestfs-tools qemu-img ansible-core gettext python3 \
-  python3-pyyaml openssh-clients xorriso
+  python3-pyyaml openssh-clients xorriso openssl
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt "$USER"
@@ -60,7 +60,7 @@ sudo dnf install -y terraform
 sudo apt update
 sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients \
   virtinst libguestfs-tools qemu-utils ansible gettext-base python3 \
-  python3-yaml openssh-client xorriso
+  python3-yaml openssh-client xorriso openssl
 
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt,kvm "$USER"

@@ -22,7 +22,7 @@ RHEL/Rocky/Fedora:
 
 ```bash
 sudo dnf install -y qemu-kvm libvirt virt-install guestfs-tools qemu-img \
-  xorriso gettext python3-pyyaml ansible-core git make
+  xorriso gettext python3-pyyaml ansible-core git make openssl
 sudo dnf install -y dnf-plugins-core
 sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 sudo dnf install -y terraform
@@ -33,7 +33,7 @@ Ubuntu/Debian:
 ```bash
 sudo apt update
 sudo apt install -y qemu-kvm libvirt-daemon-system virtinst libguestfs-tools \
-  qemu-utils xorriso gettext-base python3-yaml ansible-core git make \
+  qemu-utils xorriso gettext-base python3-yaml ansible-core git make openssl \
   gnupg curl lsb-release
 curl -fsSL https://apt.releases.hashicorp.com/gpg \
   | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp.gpg
@@ -43,6 +43,26 @@ sudo apt update && sudo apt install -y terraform
 ```
 
 Terraform precisa ser ≥ 1.5 (`terraform version`).
+
+Host RHEL **sem subscription** (por exemplo, recém-instalado só para o
+lab): o `dnf` não tem repositórios. Monte a própria DVD ISO e use-a como
+repositório antes do primeiro `dnf install`:
+
+```bash
+sudo mkdir -p /mnt/dvd && sudo mount -o ro /dev/sr0 /mnt/dvd   # ou -o loop <iso>
+sudo tee /etc/yum.repos.d/dvd.repo <<'EOF'
+[dvd-baseos]
+name=DVD BaseOS
+baseurl=file:///mnt/dvd/BaseOS
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+[dvd-appstream]
+name=DVD AppStream
+baseurl=file:///mnt/dvd/AppStream
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+EOF
+```
+
+O repositório da HashiCorp continua vindo da internet.
 
 ## 2. Liberar o libvirt para o seu usuário
 
@@ -84,9 +104,16 @@ Opcionais: `LAB_ROOT_PASSWORD`, `FLATPAK_MIRROR_ENABLED=false` (pula o
 download de ~1,6 GB do Flathub), `AI_REVIEW_*`. A lista completa está em
 [Configuração](../reference/configuracao.md).
 
-Deixe a ISO num diretório que o usuário `qemu` consiga ler (por exemplo
-`/var/lib/libvirt/images/`). Uma ISO dentro de um `$HOME` com modo `700`
-faz o `virt-install` falhar só no final; o `check-env` avisa disso.
+O usuário `qemu` precisa alcançar a ISO **e** o repositório (a imagem
+golden nasce em `output/`). Deixe a ISO em `/var/lib/libvirt/images/` e,
+se o repositório estiver num `$HOME` com modo `700` (padrão do RHEL),
+libere só a travessia:
+
+```bash
+setfacl -m u:qemu:--x "$HOME"
+```
+
+Sem isso o `virt-install` falha só no final; o `check-env` avisa antes.
 
 ## 4. Validar e subir
 

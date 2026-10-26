@@ -30,7 +30,7 @@ No host onde as VMs vão rodar (Linux com suporte a KVM):
 - **Ansible** (`ansible-core`) + a collection em `ansible/requirements.yml`
   (`ansible-galaxy collection install -r ansible/requirements.yml`)
 - **python3** (com PyYAML), **envsubst** (pacote `gettext`), **qemu-img**,
-  **xorriso**
+  **xorriso**, **openssl**
 - **Recursos**: ~8 GB de RAM livres (3 VMs de 2 GB + o host) e ~45 GB de
   disco; **internet** no deploy para o mirror flatpak (~1,6 GB, desligável
   com `FLATPAK_MIRROR_ENABLED=false`)

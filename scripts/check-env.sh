@@ -29,6 +29,7 @@ check_bin ansible "pacote 'ansible' ou 'ansible-core'"
 check_bin envsubst "pacote 'gettext'"
 check_bin python3 "pacote 'python3'"
 check_bin ssh-keygen "pacote 'openssh-clients'"
+check_bin openssl "pacote 'openssl' (hash da senha do student no build-image)"
 check_bin xorriso "pacote 'xorriso' (usado para validar RHEL_ISO_PATH abaixo)"
 
 echo ""
