@@ -34,8 +34,7 @@ Organizada segundo o [Diátaxis](https://diataxis.fr): cada documento tem um
   variáveis do Terraform e do Ansible
 - [Comando `lab` e dashboard](reference/comando-lab.md) — subcomandos,
   códigos de saída, endpoints
-- [Contrato dos exercícios](reference/contrato-exercicios.md) — `meta.json`,
-  saída do `grade.sh`, helpers de disco
+- [Contrato dos exercícios](reference/contrato-exercicios.md) — layout `labs/hosts/`, catálogo, saída do grade, guardas herdadas do homelab
 - [Catálogo de exercícios](reference/catalogo-exercicios.md)
 - [Testes de aceitação](reference/testes-aceitacao.md) — matriz T1–T11
 

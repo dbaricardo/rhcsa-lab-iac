@@ -114,17 +114,39 @@ sudo rpm --import https://security.access.redhat.com/data/6afedf8f.txt
 O kickstart e o role `common` já fazem isso. Se aconteceu, a imagem veio
 de fora do `build-image.sh` — rode `make provision` para reaplicar.
 
-## `lab start storage-lvm-01` não encontra o disco de 6 GB
+## Exercício de storage da serverb não encontra o disco de 6 GiB
 
-O disco ficou com partições de uma tentativa anterior.
+O disco ficou com partições/LVM de uma tentativa anterior
+(`examsim-vgextend`, `examsim-treino-storage`, `examsim-lvm-mydatabase` ou
+uma prova).
 
-1. Rode `lab finish storage-lvm-01` (e `lab finish filesystems-01`, se
-   usou) na `workstation` — o `finish` limpa as partições.
-2. Rode `lab start storage-lvm-01` de novo.
+1. Na `workstation`, rode `lab finish` do exercício anterior (ou
+   `lab finish examsim-full` / `examsim-dinamico` se uma prova ficou aberta).
+2. Rode o `lab start` de novo — `limpa_disco_forte` zera o disco de prática.
+
+## `examsim-repo-*`, `examsim-tuned-servera` ou `examsim-flatpak` falham
+
+Dependem do classroom na workstation. Confira, na workstation:
+
+```bash
+curl -sI -H 'Host: content.example.com' http://127.0.0.1:8091/rhel10.0/x86_64/dvd/BaseOS/repodata/repomd.xml
+curl -sI -H 'Host: flatpak.lab.example.com' http://127.0.0.1:8091/summary
+```
+
+- 404 no BaseOS: o provisionamento rodou sem `lab_iso_url` — rode
+  `make provision` (ou `provision-offline`), que serve a ISO.
+- 404 no `summary`: `FLATPAK_MIRROR_ENABLED=false` ou sem internet no deploy.
+
+## `dnf install` não acha nada nas VMs
+
+Esperado: o lockdown final deixa **nenhum** repositório habilitado, igual ao
+homelab. Os exercícios de repositório configuram o do classroom. Para
+instalar algo fora de um exercício, rode `make provision`: ele religa
+BaseOS/AppStream durante o deploy e volta a desligar no fim.
 
 ## Um exercício passa ou falha "sozinho"
 
 Estado sobrou de outro exercício. Rode `lab finish <id>` do exercício
 anterior antes de começar o próximo. Se o problema for no próprio
-exercício, ver [Criar um exercício](criar-exercicio.md) — o `finish.sh`
+exercício, ver [Criar um exercício](criar-exercicio.md) — o finish
 dele precisa reverter a configuração compartilhada.

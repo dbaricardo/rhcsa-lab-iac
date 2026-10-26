@@ -14,8 +14,8 @@ scripts, o Terraform e o Ansible — ver [configuração](configuracao.md).
 | `deploy-offline` | Igual a `deploy`, mas com `provision-offline` (sem subscription) | DVD ISO em `RHEL_ISO_PATH` | sim |
 | `build-image` | Roda `check-env` e (re)constrói a imagem golden com `scripts/build-image.sh`. **Sempre reconstrói**, mesmo que a imagem exista | ISO, `.env` | — (sobrescreve) |
 | `infra` | `catalog` + `terraform init` + `terraform apply -auto-approve`: rede, volumes, 3 domínios e `output/inventory.yml` | imagem em `output/` | sim |
-| `provision` | `catalog` + `ansible-playbook -i output/inventory.yml ansible/site.yml` | VMs no ar (`infra`) | sim |
-| `provision-offline` | `scripts/offline-repo.sh start` + playbook com `-e lab_offline_repo_url=http://<gateway>:8080` | VMs no ar, DVD ISO | sim |
+| `provision` | `catalog` + `scripts/offline-repo.sh start` + `ansible-playbook ... -e lab_iso_url=http://<gateway>:8080` (a ISO alimenta o mirror do classroom) | VMs no ar (`infra`), DVD ISO | sim |
+| `provision-offline` | Igual, com `-e lab_offline_repo_url=http://<gateway>:8080` (pacotes da ISO, sem subscription) | VMs no ar, DVD ISO | sim |
 
 ## Operação
 
@@ -31,8 +31,8 @@ scripts, o Terraform e o Ansible — ver [configuração](configuracao.md).
 | Alvo | O que faz |
 |---|---|
 | `check-env` | Valida binários, `/dev/kvm`, acesso a `qemu:///system`, pool `default`, `.env`, DVD ISO e permissões do usuário `qemu`. Modo relatório: lista todos os problemas, não para no primeiro |
-| `catalog` | Gera `labs/catalog.json` a partir de `labs/*/meta.json` (`scripts/build-catalog.py`) |
-| `lint` | `terraform fmt -check` + `terraform validate` + `ansible-lint` + `shellcheck` |
+| `catalog` | Valida `labs/catalog.json` (27 entradas, escrito à mão) com `scripts/build-catalog.py` |
+| `lint` | `terraform fmt -check` + `terraform validate` + `ansible-lint` + `shellcheck -S warning` em todos os `*.sh` |
 | `test-dashboard` | Suíte `pytest` do backend do dashboard |
 
 ## Arquivos gerados (todos em `output/`, fora do git)
@@ -53,3 +53,8 @@ git).
 
 - [Configuração](configuracao.md) — variáveis que esses alvos leem
 - [Resolver problemas](../how-to/resolver-problemas.md) — quando um alvo falha
+
+## Principais Conclusões
+
+- `make deploy`/`deploy-offline` fazem tudo; cada etapa roda sozinha.
+- `provision` é idempotente e sempre termina no lockdown de repositórios.

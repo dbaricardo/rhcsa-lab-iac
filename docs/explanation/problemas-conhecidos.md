@@ -64,7 +64,7 @@ de removê-lo. Aconteceu três vezes antes de virar regra.
 `start.sh` e reverte configuração compartilhada (`httpd.conf`, portas,
 booleans). Ver [Contrato dos exercícios](../reference/contrato-exercicios.md).
 
-## `storage-lvm-01` "perdia" o disco depois de um `finish`
+## Exercício de LVM "perdia" o disco depois de um `finish` (catálogo antigo, `storage-lvm-01`)
 
 **Sintoma:** após `lab finish storage-lvm-01`, o próximo `lab start` não
 achava o disco de 6 GB.
@@ -134,3 +134,45 @@ removidas no console.
 **Mitigação:** não há como evitar no código sem compartilhar identidade.
 O guia [Operar o lab](../how-to/operar-o-lab.md#destruir-e-recriar-o-lab)
 desregistra antes do `destroy`, e o modo offline não consome vagas.
+
+## Flathub recusa o `ostree pull` com HTTP 403
+
+**Sintoma:** o role `classroom` falha em "Espelhar codium/Obsidian" com
+`While fetching https://dl.flathub.org/repo/objects/...commit: Server
+returned HTTP 403`, em todos os refs.
+
+**Causa:** desde 2026-10 o CDN do Flathub bloqueia o User-Agent padrão do
+ostree (`libostree/<versão>`); o mesmo objeto vem com 200 para `curl` ou
+para o UA do flatpak. O homelab montou o `myrepo` antes disso.
+
+**Mitigação:** `classroom-flatpak-mirror.sh` passa
+`--http-header=User-Agent=flatpak/1.16.0` (sobrescrevível por
+`FLATHUB_USER_AGENT`). Se voltar a falhar, teste com
+`curl -A '<ua>' -o /dev/null -w '%{http_code}' <url-do-objeto>`.
+
+## `dnf` aborta com "Parsing armored OpenPGP packet(s) failed"
+
+**Sintoma:** no deploy do zero, `common : Instalar os pacotes do homelab`
+falha de forma intermitente com `RuntimeError: Parsing armored OpenPGP
+packet(s) failed` (traceback em `dnf.crypto.retrieve`).
+
+**Causa:** quando um pacote é assinado por uma chave que ainda não está no
+keyring do rpm, o dnf importa sozinho o `gpgkey=` do `.repo`, e o parser do
+libdnf às vezes falha no `RPM-GPG-KEY-redhat-release` do RHEL 10.
+
+**Mitigação:** `roles/common/tasks/repos.yml` importa a chave com
+`rpm --import` antes de qualquer `dnf install`. A `RPM-GPG-KEY-redhat-release-4`
+(pós-quântica) é só tentativa: o rpm 4.19 do RHEL 10.0 recusa ("key 1 import
+failed").
+
+## Grade de partição GPT via 0 MiB (exame dinâmico)
+
+**Sintoma:** `dyn-part-gpt-create` reprovava "a particao tem ~200 MiB
+(atual: 0 MiB)" com a partição certa no disco (2 de 3 provas da seed 1478).
+
+**Causa:** não isolada: fora da prova, 15/15 medições corretas; tuned e
+grubby não relêem a tabela. O `blockdev --getsize64` falhava no instante do
+grade.
+
+**Mitigação (único desvio do código do homelab):** o grade espera o udev,
+tenta de novo por até 5 s e cai no tamanho do sysfs. Depois: 3/3 provas 24/24.

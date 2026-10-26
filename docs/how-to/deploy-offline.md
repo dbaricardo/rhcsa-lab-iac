@@ -33,11 +33,11 @@ make offline-repo-stop   # para o HTTP e desmonta a ISO
 ## Voltar ao modo com subscription
 
 1. Preencha `RHSM_ORG_ID` e `RHSM_ACTIVATION_KEY` no `.env`.
-2. Recrie o lab do zero (as VMs offline apontam os repositórios para a ISO):
+2. Reaplique o Ansible (o lockdown do deploy offline já removeu os repos
+   da ISO; este registra cada VM e volta a desligar os repos no fim):
 
    ```bash
-   make destroy
-   make deploy
+   make provision
    ```
 
 Como funciona por dentro: [Arquitetura](../explanation/arquitetura.md#subscription-e-modo-offline).

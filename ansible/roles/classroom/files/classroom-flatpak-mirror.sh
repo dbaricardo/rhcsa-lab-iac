@@ -11,6 +11,10 @@
 #      refs/heads/ via `ostree refs --create` antes do build-update-repo;
 #   4. flatpak build-update-repo (summary + xa.cache + appstream).
 #
+# Desde 2026-10 o CDN do Flathub devolve HTTP 403 para o User-Agent padrão
+# do ostree ("libostree/<versão>"); flatpak e curl comuns passam. Por isso o
+# pull se identifica como flatpak (FLATHUB_USER_AGENT sobrescreve).
+#
 # Uso: classroom-flatpak-mirror.sh <repo> <url-upstream> <ref-app>... -- <ref-runtime>...
 # Idempotente: o pull de um ref já completo só confere o commit; o alias e o
 # summary só são refeitos quando algum commit mudou.
@@ -27,6 +31,7 @@ for a in "$@"; do
 done
 
 OST=(ostree --repo="$REPO")
+UA="${FLATHUB_USER_AGENT:-flatpak/1.16.0}"
 mudou=0
 
 if [ ! -f "$REPO/config" ]; then
@@ -44,7 +49,7 @@ fi
 espelhar_ref() {
   local ref="$1" opcional="${2:-}" antes depois
   antes="$("${OST[@]}" rev-parse "$ref" 2>/dev/null || true)"
-  if ! "${OST[@]}" pull --depth=0 flathub-src "$ref"; then
+  if ! "${OST[@]}" pull --depth=0 --http-header="User-Agent=$UA" flathub-src "$ref"; then
     if [ -n "$opcional" ]; then
       echo "AVISO: ref opcional indisponível no Flathub: $ref" >&2
       return 0

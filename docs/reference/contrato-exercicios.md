@@ -1,45 +1,54 @@
 # Referência: contrato dos exercícios
 
-Especificação do que um exercício em `labs/` precisa cumprir. Para o passo
-a passo de criar um, ver [Criar um exercício](../how-to/criar-exercicio.md).
+O que um exercício `examsim-*` precisa cumprir. Passo a passo em
+[Criar um exercício](../how-to/criar-exercicio.md).
 
-## Estrutura
+## Layout (igual às VMs do homelab)
+
+`labs/hosts/<host>/` espelha, a partir de `/`, o que o role `lab_common`
+instala em cada VM:
 
 ```
-labs/<id>/
-├── meta.json   # metadados (dashboard e dispatcher `lab`)
-├── start.sh    # prepara o ambiente
-├── grade.sh    # avalia, sem alterar nada
-└── finish.sh   # limpa
+labs/hosts/<servera|serverb>/usr/local/
+├── bin/lab                         # executor local (start/grade/finish)
+└── lib/
+    ├── lab-common.sh               # helpers (serverb: discos; ambos: verifica_senha)
+    ├── lab-scripts/<id>.sh         # start
+    ├── lab-grade/<id>.sh           # grade
+    └── lab-finish/<id>.sh          # finish (limpeza)
+labs/hosts/workstation/usr/local/lib/{lab-scripts,lab-grade,lab-finish}/
+                                    # só o lado servidor NFS do autofs
+labs/catalog.json                   # catálogo do painel (escrito à mão)
 ```
 
-`labs/catalog.json` é gerado (`make catalog`) e é o que a `workstation`
-usa. Os scripts são instalados em `/usr/local/lib/lab-scripts/<id>/` nos
-hosts listados em `hosts`.
+Um exercício novo também precisa entrar em `lab_hosts()` (e, se for o caso,
+`lab_aviso()` e `TODOS_OS_LABS`) de
+`ansible/roles/workstation/files/rhcsa-lab-original`. Modos de arquivo
+diferentes de `0750` vão em `lab_common_modes`
+(`ansible/roles/lab_common/defaults/main.yml`).
 
-## `meta.json`
+## Entrada em `labs/catalog.json`
 
-Schema: `labs/catalog.schema.json` (JSON Schema draft-07).
+Validada por `scripts/build-catalog.py` (`make catalog`) e
+`labs/catalog.schema.json`.
 
 | Campo | Tipo | Obrigatório | Regra |
 |---|---|---|---|
-| `id` | string | sim | `^[a-z0-9-]+$`, igual ao nome do diretório |
-| `number` | inteiro ≥ 1 | sim | Único; define a ordem no catálogo |
-| `title` | string | sim | Título curto |
-| `domain` | string | sim | Domínio do blueprint EX200 |
-| `hosts` | lista | sim | 1+ de `workstation`, `servera`, `serverb`, na ordem de `start`/`grade` |
-| `description` | string | sim | Resumo do cenário |
+| `id` | string | sim | `examsim-[a-z0-9-]+`, único |
+| `number` | inteiro | sim | 1..N sem buraco; `0` só para `examsim-full`/`examsim-dinamico` |
+| `title`, `description`, `warning` | string | sim | `warning` pode ser vazio |
+| `host` | string | sim | Host principal exibido no painel |
+| `hosts` | lista | sim | Subconjunto de `workstation`, `servera`, `serverb`, sem repetição |
 | `instructions` | lista de strings | sim | Enunciado, item a item |
-| `warning` | string | não | Aviso exibido no dashboard |
-| `solve_target` | string | não | Onde resolver (ex.: `servera`) |
-| `solve_method` | string | não | `ssh` ou `console` |
-| `solve_command` | string | não | Comando para chegar ao host |
-| `solve_note` | string | não | Observação extra |
+| `solve_target`, `solve_note` | string | sim | Não vazios |
+| `solve_method` | string | sim | `ssh` (com `solve_command` `ssh servera\|serverb`) ou `console` (com `solve_command` vazio) |
+| `grade` | bool | não | `false` = painel não oferece `grade` (provas orquestradas) |
+| `dynamic` | bool | não | Entrada do exame dinâmico |
+| `exam_limit_minutes` | inteiro ≥ 1 | não | Cronômetro do painel |
 
-## Saída de `grade.sh`
+## Saída do grade
 
-O dashboard faz parsing deste formato. Fora dele, o painel mostra "erro de
-infraestrutura".
+Lida por `backend.parse_grade`:
 
 | Linha | Formato |
 |---|---|
@@ -47,49 +56,50 @@ infraestrutura".
 | Critério reprovado | `FALHOU: <descrição>` |
 | Resultado (uma vez, no fim) | `RESULTADO: PASSOU` ou `RESULTADO: FALHOU` |
 
-```
-OK: usuário ana existe
-FALHOU: grupo equipe-suporte não contém ana
-RESULTADO: FALHOU
-```
+- Código de saída `0` se passou, `1` se algum critério falhou (padrão
+  `check()` dos scripts do homelab).
+- Não imprimir senhas: `atenorth` e `LAB_ROOT_PASSWORD` são mascaradas pelo
+  painel, mas o grade deve conferir propriedades, não o segredo
+  (`verifica_senha` do `lab-common.sh`).
 
-- Código de saída `0` tanto para PASSOU quanto para FALHOU. Diferente de
-  `0` só se o próprio grader quebrou.
-- Multi-host: cada host emite seus próprios `OK:`/`FALHOU:` e sua linha
-  `RESULTADO:`. O banner `==> lab grade <id> (<host>)` é impresso pelo
-  `lab`, não pelo script.
-
-## `start.sh` e `finish.sh`
+## Start e finish
 
 | Script | Contrato |
 |---|---|
-| `start.sh` | Idempotente: rodar duas vezes seguidas não quebra nada. Sai `0` em sucesso |
-| `finish.sh` | Inverso **explícito** do `start.sh` e de tudo que o estudante possa ter criado. Nunca chama `start.sh`. Reverte config compartilhada (portas, `httpd.conf`…). Sai `0` em sucesso |
+| start | Idempotente; prepara só o que o aluno precisa encontrar; sem reboot |
+| finish | Inverso explícito do start **e** do que o aluno criou; o executor local roda o grade antes |
 
-Ordem em exercícios multi-host: `start`/`grade` seguem `hosts`; `finish`
-segue a ordem inversa (cliente desmonta antes de o servidor remover o
-export).
+Guardas herdadas do homelab (manter):
 
-## Helpers de disco (`/usr/local/lib/lab-common.sh`)
+- discos sempre por **tamanho exato** (`resolve_disco`, `limpa_disco_forte`),
+  nunca `/dev/sdb`;
+- `fuser -km` antes de desmontar; `udevadm settle` após particionar;
+- `restorecon` depois de `tar`/cópias; tabs no `fstab` gravado por scripts;
+- o filtro de limpeza não pode depender de estado que a própria ação do
+  aluno destrói.
 
-Uso: `source /usr/local/lib/lab-common.sh`.
+## Exame dinâmico
 
-| Função | Retorna |
-|---|---|
-| `disco_do_so` | Disco que contém a raiz do sistema |
-| `resolve_disco <tamanho_gb> [tolerancia_gb=1]` | Disco **cru** (sem partições) com o tamanho pedido, excluindo o disco do SO. Para `start.sh` |
-| `disco_por_tamanho <tamanho_gb> [tolerancia_gb]` | Disco com o tamanho pedido, com ou sem partições. Para `finish.sh` |
-
-Nunca use nomes fixos (`/dev/sdb`, `/dev/vdb`).
-
-## Proibições
-
-- Texto do RH199 (enunciado ou solução), em qualquer forma — ver
-  [Direitos autorais](../explanation/direitos-autorais.md).
-- Imprimir senhas ou segredos reais na saída dos scripts.
+Tarefas portadas ficam em `labs/dyn/tasks/dyn-*.sh` e são registradas em
+`labs/dyn/pool.json`; `labs/dyn/tests/` valida pool e motor
+(`python3 -m pytest labs/dyn/tests`). As 24 legadas do pool reaproveitam os
+scripts `examsim-*` instalados.
 
 ## Soluções de referência
 
-`tests/solutions/<id>.sh`: solução idempotente, rodada como root em cada
-host do exercício, usada só pelo teste de aceitação (T9). Ver
-[Testes de aceitação](testes-aceitacao.md).
+`tests/solutions/legacy.sh` (todas as 25 avulsas, `--list`, `--host <id>`)
+e `labs/dyn/qa/solve-exam.sh`/`solve-legacy.sh` (exame dinâmico), usadas só
+pelo teste de aceitação (T9/T13).
+
+## Proibições
+
+- Texto de material oficial da Red Hat (RH199/RH134…), em qualquer forma —
+  ver [Direitos autorais](../explanation/direitos-autorais.md).
+- Segredos reais em scripts ou saídas.
+
+## Principais Conclusões
+
+- Um exercício = 3 scripts por host em `labs/hosts/<host>/` + entrada no
+  catálogo + entrada no dispatcher.
+- Grade: `OK:`/`FALHOU:` por critério e uma linha `RESULTADO:`.
+- Discos sempre por tamanho.

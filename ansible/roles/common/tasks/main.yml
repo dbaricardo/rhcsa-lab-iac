@@ -36,6 +36,29 @@
 - name: Pacotes iguais aos do homelab
   ansible.builtin.include_tasks: packages.yml
 
+# A imagem golden nasce com root travado (rootpw --lock). Com
+# LAB_ROOT_PASSWORD no .env, root ganha senha como no homelab (login de
+# console nos exercícios). Idempotente: só troca se o hash atual não bate.
+- name: Senha de root do lab (LAB_ROOT_PASSWORD, opcional)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    atual=$(getent shadow root | cut -d: -f2)
+    case "$atual" in
+      '$6$'*)
+        salt=$(cut -d'$' -f3 <<<"$atual")
+        [ "$(openssl passwd -6 -salt "$salt" -stdin <<<"$LAB_PW")" = "$atual" ] && exit 0 ;;
+    esac
+    printf 'root:%s\n' "$LAB_PW" | chpasswd
+    echo MUDOU
+  args:
+    executable: /bin/bash
+  environment:
+    LAB_PW: "{{ lab_root_password }}"
+  register: common_root_pw
+  changed_when: "'MUDOU' in common_root_pw.stdout"
+  no_log: true
+  when: lab_root_password | length > 0
+
 - name: Habilitar chronyd
   ansible.builtin.systemd:
     name: chronyd

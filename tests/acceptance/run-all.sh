@@ -73,12 +73,14 @@ grade_result() {
   local out rc
   out="$(vm_ssh workstation "lab grade $2" 2>&1)"
   rc=$?
-  if [ "$rc" -ne 0 ]; then
+  # Grade do homelab: sai 0 se passou e 1 se algum critério falhou. Erro de
+  # infra = qualquer outro código ou nenhuma linha RESULTADO na saída.
+  if { [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; } || ! grep -q "RESULTADO:" <<<"$out"; then
     echo "ERRO_INFRA (rc=$rc): $out" >&2
     echo "ERRO_INFRA"
     return
   fi
-  echo "$out" | grep -q "RESULTADO: PASSOU" && echo "PASSOU" || echo "FALHOU"
+  grep -q "RESULTADO: PASSOU" <<<"$out" && echo "PASSOU" || echo "FALHOU"
 }
 
 run_solution() {
@@ -269,7 +271,11 @@ t8_dashboard() {
     step_fail "GET ${url}/api/state não lista as 27 tarefas"
   fi
 
-  if curl -fsS --max-time 10 "${url}/" 2>/dev/null | grep -q "lab"; then
+  # Sem pipe direto: com pipefail, o grep -q sai cedo e o curl morre com
+  # SIGPIPE (rc 23), reprovando uma página que respondeu certo.
+  local page
+  page="$(curl -fsS --max-time 10 "${url}/" 2>/dev/null)"
+  if grep -q "<title>RHCSA" <<<"$page"; then
     step_ok "GET ${url}/ devolve a página do dashboard"
   else
     step_fail "GET ${url}/ não devolveu a página do dashboard"
@@ -366,8 +372,9 @@ t12_prova_completa() {
     step_ok "'lab grade examsim-full' recusado, como no homelab"
   fi
 
-  timed "examsim-full finish" vm_ssh workstation "lab finish examsim-full" >>"$out" 2>&1 \
-    || { step_fail "'lab finish examsim-full' falhou (ver $out)"; return; }
+  # O finish sai 1 quando a prova reprova (aqui, sem solução, sempre): só é
+  # falha de verdade se não imprimiu a nota.
+  timed "examsim-full finish" vm_ssh workstation "lab finish examsim-full" >>"$out" 2>&1
   if grep -Eq "Nota [0-9]+/24" "$out"; then
     step_ok "finish corrigiu a prova ($(grep -Eo 'Nota [0-9]+/24' "$out" | tail -1), sem solução aplicada)"
   else
@@ -391,15 +398,18 @@ t13_exame_dinamico() {
     out="output/acceptance-t13-${seed}.out"
     echo "--- seed $seed ---"
     timed "dinâmico start (seed $seed)" vm_ssh workstation "LAB_SEED=$seed lab start examsim-dinamico" >"$out" 2>&1 \
-      || { step_fail "seed $seed: 'lab start examsim-dinamico' falhou (ver $out)"; continue; }
+      || { step_fail "seed $seed: 'lab start examsim-dinamico' falhou (ver $out)"
+           # Sem isso a prova fica aberta e todas as seeds seguintes falham em cascata.
+           vm_ssh workstation "lab finish examsim-dinamico" >>"$out" 2>&1
+           continue; }
 
     vm_ssh workstation "$dyn/qa/solve-exam.sh </dev/null" >>"$out" 2>&1 \
       || step_fail "seed $seed: qa/solve-exam.sh falhou (ver $out)"
     vm_ssh workstation "$dyn/qa/solve-legacy.sh </dev/null" >>"$out" 2>&1 \
       || step_fail "seed $seed: qa/solve-legacy.sh falhou (ver $out)"
 
-    timed "dinâmico finish (seed $seed)" vm_ssh workstation "lab finish examsim-dinamico" >>"$out" 2>&1 \
-      || { step_fail "seed $seed: 'lab finish examsim-dinamico' falhou (ver $out)"; continue; }
+    # rc 1 = reprovou; a nota abaixo diz o resto.
+    timed "dinâmico finish (seed $seed)" vm_ssh workstation "lab finish examsim-dinamico" >>"$out" 2>&1
 
     if grep -q "Nota 24/24" "$out"; then
       step_ok "seed $seed: 24/24, aprovado"

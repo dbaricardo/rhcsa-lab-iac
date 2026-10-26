@@ -25,6 +25,14 @@
     - common
     - ssh_crosshost
 
+# "Classroom" do homelab (LXC 205) na workstation: precisa de dnf e da ISO
+# servida pelo host, por isso roda antes do lockdown.
+- name: workstation - classroom (mirror :8091, flatpak myrepo, NTP)
+  hosts: workstation
+  become: true
+  roles:
+    - classroom
+
 - name: servera - pacotes e exercícios locais atribuídos a este host
   hosts: servera
   become: true
@@ -39,14 +47,59 @@
     - serverb
     - lab_common
 
-- name: workstation - dashboard web, dispatcher remoto `lab` e exercícios locais
+- name: workstation - dashboard, wrapper `lab`, exame dinâmico e revisão por IA
   hosts: workstation
   become: true
   roles:
     - dashboard
-    # lab_common instala lab-remote + os exercícios cujo `hosts` inclui
-    # "workstation" (ex.: shell-scripting-01) -- o dispatcher `lab` (role
-    # workstation) invoca lab-remote localmente (sem SSH) quando o alvo é o
-    # próprio host, ver ansible/roles/workstation/files/lab.
-    - lab_common
     - workstation
+    # Lado workstation do examsim-autofs-remoteuser2 (labs/hosts/workstation).
+    - lab_common
+    - lab_dyn
+    # Opcional: no-op (remove resíduos) com ai_review_enabled/rhcsa_recording_enabled=false.
+    - ai_review
+
+# Estado final igual ao homelab: nenhum repositório habilitado nas 3 VMs (os
+# exercícios examsim-repo-* / dyn-repo-* configuram o repo do classroom do
+# zero). A subscription, se houver, fica registrada (sem unregister) e com
+# todos os repos desabilitados -- o próximo `make provision` religa
+# BaseOS/AppStream (roles/common/tasks/repos.yml).
+- name: RHCSA lab - lockdown final dos repositórios
+  hosts: all
+  become: true
+  tasks:
+    - name: Remover os repos do modo offline
+      ansible.builtin.yum_repository:
+        name: "{{ item }}"
+        state: absent
+      loop: [lab-offline-baseos, lab-offline-appstream]
+
+    - name: Ver se o host está registrado na subscription
+      ansible.builtin.command: subscription-manager identity
+      register: lockdown_identity
+      changed_when: false
+      failed_when: false
+
+    - name: Desabilitar todos os repos da subscription
+      ansible.builtin.command: subscription-manager repos --disable=*
+      changed_when: false
+      when: lockdown_identity.rc == 0
+
+    - name: Listar repos ainda habilitados
+      ansible.builtin.shell: |
+        set -o pipefail
+        dnf -q repolist --enabled 2>/dev/null | awk 'NR>1 {print $1}'
+      args:
+        executable: /bin/bash
+      register: lockdown_repolist
+      changed_when: false
+
+    - name: Conferir que nenhum repo ficou habilitado
+      ansible.builtin.assert:
+        that: lockdown_repolist.stdout_lines | length == 0
+        fail_msg: "{{ inventory_hostname }}: repos ainda habilitados: {{ lockdown_repolist.stdout_lines }}"
+        quiet: true
+
+    - name: Limpar o cache do dnf (nada apontando para a ISO/CDN do deploy)
+      ansible.builtin.command: dnf clean all
+      changed_when: false

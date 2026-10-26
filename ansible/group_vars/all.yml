@@ -48,6 +48,12 @@ dashboard_port: "{{ lab_spec.dashboard.port }}"
 dashboard_allowed_source: "{{ lab_spec.dashboard.allowed_source }}"
 dashboard_bind_host: "0.0.0.0"
 
+# Senha de root das 3 VMs (LAB_ROOT_PASSWORD do .env). Vazia = root fica
+# travado como na imagem golden (entra só por chave). O dashboard também a
+# usa para mascarar a credencial nas saídas.
+lab_root_password: "{{ lookup('ansible.builtin.env', 'LAB_ROOT_PASSWORD') }}"
+dashboard_root_password: "{{ lab_root_password }}"
+
 # --- Revisão por IA e gravação de terminal (role ai_review, opcionais) -----
 ai_review_enabled: "{{ lookup('ansible.builtin.env', 'AI_REVIEW_ENABLED') | default('false', true) | bool }}"
 rhcsa_recording_enabled: "{{ lookup('ansible.builtin.env', 'RHCSA_RECORDING_ENABLED') | default('false', true) | bool }}"

@@ -8,7 +8,8 @@ No fim você terá:
 
 - três VMs RHEL 10 (`workstation`, `servera`, `serverb`) rodando;
 - o dashboard de progresso aberto no navegador;
-- o exercício `users-groups-01` resolvido e corrigido.
+- o exercício `examsim-grupos` resolvido e corrigido, e o caminho para as
+  provas completas (`examsim-full`, `examsim-dinamico`).
 
 Tempo total: cerca de 1 hora, a maior parte esperando a instalação do RHEL.
 
@@ -147,6 +148,11 @@ Edite `.env` e preencha:
 | `RHSM_ACTIVATION_KEY` | Activation key anotada no passo 2 |
 | `STUDENT_PASSWORD` | Senha do usuário `student` nas VMs (uso local apenas) |
 | `APPLY_SECURITY_UPDATES` | `false` (padrão, build mais rápido) ou `true` |
+| `LAB_ROOT_PASSWORD` | Opcional: senha de root das VMs (login de console) |
+
+As demais (`FLATPAK_MIRROR_ENABLED`, `RHCSA_RECORDING_ENABLED`,
+`AI_REVIEW_*`) podem ficar no padrão — ver
+[Configuração](../reference/configuracao.md).
 
 `RHSM_ORG_ID` e `RHSM_ACTIVATION_KEY` podem ficar vazias se você for usar
 só o modo offline (`make deploy-offline`).
@@ -180,16 +186,19 @@ Um único comando, sem interação. Ele vai, nesta ordem:
 
 1. instalar o RHEL 10 da sua ISO numa imagem base (só na primeira vez);
 2. criar a rede e as 3 VMs a partir dessa imagem (Terraform);
-3. configurar as VMs: subscription, pacotes, exercícios e dashboard
-   (Ansible).
+3. configurar as VMs (Ansible): subscription, rede e pacotes iguais ao lab
+   de referência, o "classroom" na workstation (mirror de pacotes e
+   flatpak), exercícios, provas e dashboard — e, no fim, desabilitar todos
+   os repositórios, porque os exercícios de repositório partem do zero.
 
 Quer saber o que acontece em cada etapa? Leia depois a
 [Arquitetura](../explanation/arquitetura.md) e a
 [Imagem golden](../explanation/imagem-golden.md) — não é preciso agora.
 
-**Tempo estimado:** na primeira vez, entre 15 e 30 minutos — a maior parte
-é a instalação desassistida do RHEL (10 a 20 minutos). Nas vezes seguintes,
-com a imagem já pronta, só as etapas 2 e 3 rodam (poucos minutos).
+**Tempo estimado:** na primeira vez, entre 30 e 60 minutos — a instalação
+desassistida do RHEL (10 a 20 minutos) e o download do mirror flatpak
+(~1,6 GB) são as partes longas. Nas vezes seguintes, com a imagem pronta,
+só as etapas 2 e 3 rodam.
 
 O que esperar no terminal: linhas `==> ...` marcando cada etapa da imagem,
 a saída do `terraform apply` e, por fim, a saída do Ansible task a task. O
@@ -221,8 +230,8 @@ Dentro dela, liste o catálogo de exercícios:
 lab list
 ```
 
-Isso deve imprimir a lista de exercícios disponíveis (número, id, host(s),
-título). Se `lab list` falhar ou vier vazia, confirme que o Ansible rodou
+Isso deve imprimir os 25 exercícios `examsim-*` com o(s) host(s) de cada um
+(as provas `examsim-full` e `examsim-dinamico` aparecem no dashboard). Se `lab list` falhar ou vier vazia, confirme que o Ansible rodou
 até o fim sem erros (`make provision` de novo mostra o que falta).
 
 Saia da sessão SSH (`exit` ou `Ctrl+D`) quando terminar. Os atalhos `make
@@ -246,19 +255,19 @@ Se a página não carregar, confirme a origem permitida em `machines.yaml` ->
 
 ## 9. Resolver um exercício de ponta a ponta
 
-Vamos usar `users-groups-01` como exemplo — um exercício simples, de um
+Vamos usar `examsim-grupos` como exemplo — um exercício simples, de um
 único host (`servera`).
 
 Tudo começa e termina na `workstation`:
 
 ```bash
 make ssh-workstation
-lab start users-groups-01
+lab start examsim-grupos
 ```
 
-Isso prepara o ambiente do exercício em `servera` (o dispatcher `lab`
-resolve automaticamente qual host usar, olhando o catálogo). A saída mostra
-`==> lab start users-groups-01 (servera)` seguido do resultado.
+Isso prepara o ambiente do exercício em `servera` (o dispatcher `lab` sabe
+qual host usar). A saída mostra `==> start examsim-grupos em servera`
+seguido de `==> Pronto.`.
 
 Agora resolva o exercício de verdade. De dentro da própria `workstation`
 (como no exame), entre na `servera`:
@@ -269,30 +278,35 @@ ssh servera
 
 (ou, a partir do seu host, `make ssh-servera`). Leia as instruções do
 exercício no dashboard e resolva com os comandos reais do RHEL
-(`useradd`, `groupadd`, `chage`, etc. — para este exercício específico).
+(`groupadd`, `useradd`, `usermod -aG`, `passwd`… — para este exercício).
 Quando terminar, saia da `servera`.
 
 De volta na `workstation`, avalie o resultado:
 
 ```bash
-lab grade users-groups-01
+lab grade examsim-grupos
 ```
 
 A saída mostra uma linha `OK:`/`FALHOU:` por critério avaliado, terminando
 com `RESULTADO: PASSOU` ou `RESULTADO: FALHOU`. Rode `lab grade` quantas
 vezes quiser — é uma operação somente leitura, não altera nada.
 
-Atualize o dashboard no navegador (passo 8): o exercício `users-groups-01`
+Atualize o dashboard no navegador (passo 8): o exercício `examsim-grupos`
 deve aparecer com o resultado mais recente.
 
 Quando terminar de estudar esse exercício, limpe o ambiente:
 
 ```bash
-lab finish users-groups-01
+lab finish examsim-grupos
 ```
 
-Isso desfaz o que `lab start` preparou e o que você criou, deixando
-`servera` pronta para o próximo exercício.
+O `finish` avalia mais uma vez e depois desfaz o que o `lab start` preparou
+e o que você criou, deixando a `servera` pronta para o próximo exercício.
+
+Quando estiver pronto para uma prova inteira, use `lab start examsim-full`
+(24 questões fixas) ou `lab start examsim-dinamico` (24 sorteadas). As duas
+só dão nota no `lab finish` (`Nota X/24`, aprovação com 17) e o enunciado
+fica em `~/examsim-full/` ou `~/examsim-dinamico/` e no dashboard.
 
 ## 10. Desligar o lab
 

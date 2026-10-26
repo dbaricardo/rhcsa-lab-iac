@@ -96,6 +96,25 @@
   register: gpg_key_import
   failed_when: false
 
+# Achado na homologação (T11, 2026-10-25): quando um pacote é assinado por
+# uma chave que ainda não está no keyring do rpm, o dnf importa o `gpgkey=`
+# do .repo sozinho -- e o parser do libdnf às vezes falha no arquivo do
+# RHEL 10 ("RuntimeError: Parsing armored OpenPGP packet(s) failed"),
+# abortando a instalação. O rpm importa o mesmo arquivo sem problema, então
+# todas as chaves de release entram aqui, antes de qualquer `dnf install`.
+- name: Importar as chaves de release locais com rpm (evita o parser do libdnf)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    # A -4 (pós-quântica) o rpm 4.19 do RHEL 10.0 não importa ("key 1 import
+    # failed"); fica como tentativa, para releases que já suportem.
+    if [ -f /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 ]; then
+      rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release-4 2>/dev/null || true
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+
 - name: Avisar se a 4a chave GPG não pôde ser importada (sem rede de saída?)
   ansible.builtin.debug:
     msg: >-

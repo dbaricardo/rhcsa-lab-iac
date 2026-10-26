@@ -4,218 +4,168 @@ Como as peças se encaixam e por que foram desenhadas assim. Para os
 valores exatos (IPs, portas, variáveis), ver a
 [Referência de configuração](../reference/configuracao.md).
 
+## Objetivo de design: idêntico ao lab do homelab
+
+Desde 2026-10 o repositório reproduz **o mesmo lab RHCSA** que roda no
+homelab do autor (3 VMs Proxmox): as mesmas 24 questões avulsas
+`examsim-*` + o treino `examsim-treino-storage`, a prova completa
+`examsim-full`, o exame dinâmico `examsim-dinamico` (pool de 166 tarefas),
+o mesmo dashboard e o mesmo comando `lab`. Os scripts são cópias dos que
+rodam lá; só muda o que é inevitável por estar em outra rede:
+
+| Homelab | Aqui | Papel |
+|---|---|---|
+| `192.168.10.132` / `.135` / `.137` | `192.168.56.20` / `.30` / `.10` | servera / serverb / workstation |
+| `192.168.10.19` (LXC "classroom") | `192.168.56.10` (a própria workstation) | mirror `:8091`, flatpak, NTP |
+| `192.168.10.1` e DNS `192.168.10.30` | `192.168.56.1` (host libvirt) | gateway e "DNS" |
+| `192.168.10.91` | `192.168.56.91` | IP de prática da `ens19` (servera) |
+| `qm reboot`, noVNC | `virsh reboot`, `virsh console` | textos dos avisos |
+
+Nomes que **não** mudam: `servera|serverb|workstation.lab.example.com`,
+`content.example.com`, `classroom.example.com`, `repo.example.com`,
+`flatpak.lab.example.com`, porta `8091`, NICs `ens18`/`ens19`.
+
 ## Topologia
 
-Três VMs libvirt criadas pelo Terraform (`terraform/`), todas clones
-copy-on-write da mesma imagem golden `rhel10-rhcsa-base`, ligadas por uma
-rede NAT libvirt (`machines.yaml` -> `network`). Cada VM tem IP fixo, via
-reserva DHCP por MAC no dnsmasq da rede — a imagem não precisa saber nada da
-topologia. A NAT dá saída para a internet (subscription e repositórios da
-Red Hat):
-
 ```
-                         rede NAT libvirt "rhcsa_lab"
-                         192.168.56.0/24 (gateway 192.168.56.1)
-      host (seu PC) ────────────────┬──────────────────────────┐
-                                     │                          │
-                          192.168.56.10                 192.168.56.20 / .30
-                    ┌────────────────────────┐      ┌─────────────────────────┐
-                    │      workstation        │      │   servera / serverb     │
-                    │  (role: client)          │      │   (role: server)        │
-                    │                          │      │                         │
-                    │  systemd:                │ SSH  │  /usr/local/bin/        │
-                    │   rhcsa-lab-dashboard ───┼──────┼─ lab-remote             │
-                    │   (porta 8421, HTTP)     │◄─────┼─ (dispatcher local)     │
-                    │                          │      │                         │
-                    │  /usr/local/bin/lab      │      │  /usr/local/lib/        │
-                    │  (dispatcher remoto)     │      │   lab-scripts/<id>/     │
-                    │                          │      │   (start/grade/finish)  │
-                    └────────────────────────┘      └─────────────────────────┘
-                                                        serverb tem, além disso,
-                                                        2 discos extra brutos
-                                                        (6GB + 1GB) para
-                                                        exercícios de storage/LVM
+                     rede NAT libvirt "rhcsa_lab" 192.168.56.0/24
+                     gateway/DNS 192.168.56.1 (host) · ISO em :8080 no deploy
+   ┌───────────────────────────────┐  SSH root   ┌──────────────────────────────┐
+   │ workstation  192.168.56.10    │────────────►│ servera  192.168.56.20       │
+   │  lab (lab_wrapper.py)         │             │  ens18 + ens19 (sem IP)      │
+   │  rhcsa-lab-original           │             │  vda 2 GiB, vdb 3 GiB        │
+   │  lab-full/ · lab-dyn/         │             │  lab + lab-scripts/grade/... │
+   │  dashboard :8421 (SQLite)     │  SSH root   ├──────────────────────────────┤
+   │  "classroom": nginx :8091     │────────────►│ serverb  192.168.56.30       │
+   │    content/classroom/repo/    │             │  sdb 6 GiB, sdc 1 GiB (SCSI) │
+   │    flatpak.lab.example.com    │             │  vda 2 GiB, vdb 3 GiB        │
+   │  chrony (NTP do lab), NFS     │             │  lab + lab-full/...-serverb  │
+   └───────────────────────────────┘             └──────────────────────────────┘
+        disco do SO: SCSI sda 20 GiB nas 3 VMs (BIOS, como no Proxmox)
 ```
 
-- `workstation` (192.168.56.10, 2 vCPU / 2GB): onde o estudante trabalha.
-  Roda o dashboard web e o dispatcher `lab`.
-- `servera` (192.168.56.20, 2 vCPU / 2GB): host "servidor" alvo da maioria
-  dos exercícios single-host.
-- `serverb` (192.168.56.30, 2 vCPU / 2GB, + discos extra de 6GB e 1GB): host
-  "servidor" com armazenamento extra bruto, para exercícios de
-  partição/LVM/filesystem que precisam de um disco do zero.
-
-Toda a especificação (nomes, IPs, memória, CPUs, discos extra) vem de um
-único arquivo, `machines.yaml` — é a fonte de verdade lida pelo Terraform
-(`yamldecode(file(...))` em `terraform/main.tf`), pelos roles Ansible (via
-`lookup('file', ...) | from_yaml`) e por `scripts/build-image.sh`. Isso evita
-que a topologia fique duplicada e divergente entre Terraform e Ansible.
+- Toda a topologia (IPs, MACs, NICs, discos, porta do dashboard e do
+  classroom) vem de `machines.yaml`, lido pelo Terraform
+  (`yamldecode`) e pelo Ansible (`group_vars/all.yml`).
+- **Nomes de NIC iguais ao Proxmox:** o Terraform fixa os MACs; o role
+  `common` grava arquivos systemd `.link` (MAC → `ens18`/`ens19`),
+  regenera o initramfs e reinicia a VM uma vez. O IP não muda (reserva DHCP
+  e perfil NM estático `ens18` usam o mesmo endereço).
+- **Discos achados por tamanho, nunca por nome:** os exercícios e o
+  `lab-common.sh` procuram 1 GiB, 6 GiB, 2 GiB e 3 GiB exatos; a ordem
+  `sdb`/`sdc`/`vda`/`vdb` já inverteu entre boots em produção.
 
 ## Fluxo de deploy
 
 ```
-make deploy
-  ├─ output/rhel10-rhcsa-base.qcow2 existe?  não → scripts/build-image.sh
-  │     virt-install + kickstart → virt-customize (image/finalize.sh)
-  ├─ make infra      → terraform apply (terraform/)
-  │     rede NAT + volume base + 3 discos raiz CoW + discos extra
-  │     + 3 domínios + output/inventory.yml (inventário do Ansible)
-  └─ make provision  → ansible-playbook -i output/inventory.yml ansible/site.yml
-        espera SSH → hostname → subscription → pacotes → exercícios
-        → dispatcher lab → dashboard
+make deploy | deploy-offline
+  ├─ build-image   virt-install + kickstart (disco SCSI) → finalize.sh
+  ├─ infra         terraform apply: rede, volumes CoW, discos, 3 domínios,
+  │                output/inventory.yml
+  └─ provision     scripts/offline-repo.sh serve a ISO em 192.168.56.1:8080
+                   ansible-playbook ansible/site.yml (7 plays, abaixo)
 ```
 
-- **Terraform cuida só do que existe fora das VMs** (rede, discos,
-  domínios). O estado (`terraform/terraform.tfstate`, fora do git) é o que
-  permite ao `make destroy` remover exatamente o que foi criado.
-- **Ansible cuida de tudo dentro das VMs.** O inventário é gerado pelo
-  próprio Terraform (`local_file`), com as variáveis que os roles esperam
-  (`lab_domain`, `dashboard_port`, IPs etc.).
-- **Subscription**: registrada por VM, nunca na imagem — ver
-  [Subscription e modo offline](#subscription-e-modo-offline).
-- O provider `dmacvicar/libvirt` está fixado em `0.8.3`: a linha 0.9.x
-  reescreveu o schema inteiro e quebraria `main.tf`.
+Ordem das plays em `ansible/site.yml`:
+
+0. **all** — espera SSH e fixa o hostname FQDN.
+1. **all** — `common` (usuário, subscription ou repo da ISO, rede
+   `ens18`/`ens19`, `/etc/hosts`, paridade de pacotes com o homelab,
+   senha de root opcional, SELinux, firewalld) + `ssh_crosshost` (chave do
+   `student` da workstation no `root` das 3 VMs).
+2. **workstation** — `classroom` (nginx `:8091`, mirror parcial
+   BaseOS/AppStream tirado da ISO, `/timer-repo` com o RPM `logger`,
+   OSTree `myrepo` do Flathub, NTP).
+3. **servera** — `servera` + `lab_common`.
+4. **serverb** — `serverb` + `lab_common`.
+5. **workstation** — `dashboard`, `workstation` (wrapper `lab`,
+   `rhcsa-lab-original`, `lab-full/`), `lab_common` (lado NFS do autofs),
+   `lab_dyn` (motor do exame dinâmico) e `ai_review` (opcional).
+6. **all** — **lockdown**: remove os repos do deploy, desabilita os da
+   subscription (sem `unregister`) e confere que **nenhum** repo ficou
+   habilitado — estado igual ao do homelab, onde os exercícios de
+   repositório partem do zero.
+
+## Classroom dentro da workstation
+
+No homelab o mirror de pacotes, o repositório flatpak e o NTP rodam numa
+LXC separada. Aqui isso viraria uma 4ª VM só para servir arquivos, então o
+role `classroom` coloca tudo na workstation, com os **mesmos nomes e
+caminhos** (`content.example.com:8091/rhel10.0/x86_64/dvd/{BaseOS,AppStream}`,
+`/timer-repo`, `flatpak.lab.example.com:8091/myrepo.flatpakrepo`):
+
+- O mirror de RPMs é **parcial**: os mesmos ~50 nomes de pacote do mirror
+  do homelab, baixados da ISO do usuário (nunca redistribuídos).
+- O OSTree `myrepo` (VSCodium, Obsidian e runtimes, ~1,6 GB) é montado do
+  Flathub no deploy; desligável com `FLATPAK_MIRROR_ENABLED=false`.
+- Lição do homelab preservada: o `ostree pull` deixa os refs só no
+  namespace do remote, e o `flatpak build-update-repo` não os indexa —
+  cada ref ganha um alias em `refs/heads/` antes do summary.
+
+## Comando `lab`: três camadas
+
+```
+student@workstation$ lab start examsim-cron
+  └─ /usr/local/bin/lab                 lab_wrapper.py: registra no SQLite do
+                                        dashboard, dispara a revisão por IA
+     └─ /usr/local/libexec/rhcsa-lab-original
+           dispatcher: decide o(s) host(s) e a ordem
+           └─ ssh root@servera "lab start examsim-cron"
+                 └─ /usr/local/bin/lab (local) → lab-scripts/examsim-cron.sh
+```
+
+- O wrapper é transparente: repassa saída e código de retorno.
+- `examsim-full` e `examsim-dinamico` não vão a um host só: o dispatcher
+  chama `lab-full/examsim-full.sh` ou `lab-dyn/examsim-dinamico.sh`, que
+  preparam as 24 questões em servera, serverb e workstation e só corrigem no
+  `finish` (nota X/24, aprovação com 17).
+- O exame dinâmico sorteia de `pool.json` (24 legadas + 142 portadas, mínimo
+  de 2 por domínio); `LAB_SEED=<n>` reproduz uma prova. As tarefas portadas
+  vão por SSH (base64 em `bash -c`), não ficam instaladas em servera/serverb.
+
+## Dashboard
+
+Serviço systemd `rhcsa-lab-dashboard` na workstation (`backend.py`,
+`http.server` sem framework, porta 8421), só leitura: `GET /`,
+`/api/state`, `/healthz`. Lê o SQLite que o wrapper grava e os manifestos
+públicos do exame dinâmico em `/var/lib/rhcsa-lab-dashboard/dinamico/`.
+Senhas de exercício (`atenorth`) e a `LAB_ROOT_PASSWORD` são mascaradas
+nas saídas. Firewalld libera a porta só para `dashboard.allowed_source`.
+
+## Revisão por IA e gravação (opcionais)
+
+Desligadas por padrão. Com `RHCSA_RECORDING_ENABLED=true`, cada login
+interativo nas 3 VMs é gravado com `script` em `/var/log/rhcsa-rec`; com
+`AI_REVIEW_ENABLED=true` + `AI_REVIEWER`, o `lab finish` envia a transcrição
+para um revisor por SSH (`contrib/ai-reviewer/`) e grava o retorno em
+`~/examsim-feedback/`. A nota do `lab` nunca espera a revisão.
 
 ## Subscription e modo offline
 
-**Por que nunca registrar a imagem golden:** as 3 VMs são clones da mesma
-imagem. Se ela saísse registrada, as três compartilhariam o mesmo consumer
-ID na Red Hat — o que já causou conflito real (uma VM "rouba" a identidade
-da outra). Por isso o kickstart não registra nada, e o role `common`
-registra **cada VM depois de clonada**, uma a uma, com
-`RHSM_ORG_ID`/`RHSM_ACTIVATION_KEY` do `.env`.
+- **Nunca registrar a imagem golden:** as 3 VMs são clones; registrada,
+  compartilhariam o mesmo consumer ID (já causou conflito real). O role
+  `common` registra **cada VM depois de clonada** com
+  `RHSM_ORG_ID`/`RHSM_ACTIVATION_KEY`, ou falha cedo se não houver registro.
+- **Modo offline** (`make deploy-offline`): BaseOS/AppStream vêm da ISO
+  servida pelo host; serve para testar sem conta Red Hat.
+- Nos dois modos a ISO também é servida (`lab_iso_url`) porque é dela que o
+  `classroom` tira os RPMs do mirror parcial.
 
-**Por que falhar cedo:** sem as variáveis e sem registro manual, o role
-`common` confere `subscription-manager identity` e para antes de qualquer
-`dnf`. Sem esse assert, o erro apareceria bem depois, como um "repositório
-vazio" genérico, difícil de ligar à causa.
+## Por que Terraform + Ansible, sem Vagrant nem Packer
 
-**Modo offline:** existe só para testar a infraestrutura sem conta Red Hat
-(CI, host descartável). `scripts/offline-repo.sh` monta a DVD ISO somente
-leitura e serve `BaseOS/` e `AppStream/` por `python3 -m http.server` no
-gateway da rede do lab (`192.168.56.1:8080`). O `Makefile` passa
-`lab_offline_repo_url` ao Ansible; com ela preenchida, o role `common`
-aponta os repositórios para esse HTTP e pula o assert de subscription — é a
-forma explícita de dizer "sem subscription de propósito". O preço: nenhum
-update ou errata, só o conteúdo congelado da ISO.
+- **Estado explícito:** `make destroy` remove domínios, volumes e rede sem
+  sobras (teste T11).
+- **Menos peças frágeis:** o `vagrant-libvirt` compila gems nativas e usava
+  defaults (`cirrus`, máquina `pc`) que o libvirt do RHEL/Rocky 10 rejeita.
+- **Sem Packer:** `virt-install` + kickstart já são necessários; o fluxo
+  kickstart → `virt-customize` → qcow2 base é reproduzível sem outro builder.
+- **RHEL 10 real:** o exame é aplicado sobre RHEL; há um
+  [guia para Rocky Linux](../how-to/usar-rocky-linux.md), sem o mesmo rigor.
 
-## Dashboard não é uma 4ª VM
+## Principais Conclusões
 
-O dashboard web (`ansible/roles/dashboard/`) é um **serviço systemd
-(`rhcsa-lab-dashboard.service`) rodando dentro da própria `workstation`**,
-servindo um backend HTTP simples em Python (`http.server`, sem framework)
-na porta 8421, com um índice HTML estático e uma API somente leitura
-(`GET /api/state`, `GET /healthz`).
-
-Por quê:
-
-- O dashboard só existe para visualizar o progresso que o dispatcher `lab`
-  já registra localmente (SQLite em `/var/lib/rhcsa-lab-dashboard`) — não há
-  necessidade de rede, isolamento ou ciclo de vida independentes que
-  justifiquem uma VM própria.
-- Uma VM a mais custaria RAM/CPU do host sem nenhum ganho arquitetural: o
-  dashboard não processa nada que o dispatcher já não tenha processado.
-- Manter os dois no mesmo host simplifica o acesso ao mesmo banco SQLite
-  (`ProgressStore`, compartilhado entre `backend.py` e o dispatcher `lab`)
-  sem precisar de rede entre eles.
-
-O acesso HTTP externo (do seu navegador, fora da rede do lab) é controlado
-por uma regra `firewalld` explícita, restrita à origem configurada em
-`machines.yaml` -> `dashboard.allowed_source` (por padrão, apenas a própria
-rede privada do lab).
-
-## Dispatcher remoto (`lab`) x dispatcher local (`lab-remote`)
-
-O modelo é deliberadamente assimétrico:
-
-- **`lab`** (Python, instalado só na `workstation` pelo role `workstation`,
-  arquivo `ansible/roles/workstation/files/lab`) é o único comando que o
-  estudante digita. Ele:
-  1. lê `catalog.json` (gerado por `scripts/build-catalog.py` a partir dos
-     `meta.json` de cada exercício em `labs/`) para saber quais hosts um
-     exercício usa e em que ordem;
-  2. para cada host declarado no exercício, invoca
-     `sudo /usr/local/bin/lab-remote <ação> <id>` — via SSH (chave ed25519
-     distribuída pelo role `ssh_crosshost`) quando o alvo é `servera`/
-     `serverb`, ou diretamente (sem SSH) quando o alvo declarado é a própria
-     `workstation` (caso de exercícios como `shell-scripting-01`, para os
-     quais o role `lab_common` também é aplicado à workstation);
-  3. **nunca executa a lógica de um exercício num host diferente do que o
-     `meta.json` declara** — se o host correto for outro e estiver
-     inacessível, falha explicitamente com código de saída 2, em vez de
-     silenciosamente pular a etapa ou rodar em substituição no host errado;
-  4. registra o resultado (saída, código de retorno, timestamps) no mesmo
-     banco SQLite que o dashboard lê, via a classe `ProgressStore`
-     (compartilhada com `backend.py`).
-- **`lab-remote`** (Bash, instalado em `servera`/`serverb`/`workstation`
-  pelo role `lab_common`) só sabe rodar
-  `/usr/local/lib/lab-scripts/<id>/<ação>.sh` no host local. Não tem
-  conhecimento de topologia, catálogo ou dashboard — não deve (e não é
-  esperado) ser chamado diretamente pelo estudante.
-
-Essa separação existe para que a lógica de "que host(s) este exercício usa"
-viva em **um único lugar** (o catálogo, consumido pelo `lab` remoto), em vez
-de espalhada em cada script de exercício.
-
-## Ordem de execução do Ansible
-
-`site.yml` roda em 5 plays, na ordem:
-
-0. Uma play sem fatos contra `hosts: all` que espera as VMs recém-criadas
-   aceitarem SSH (`wait_for_connection`) e fixa o hostname FQDN — a imagem
-   golden vem como `rhcsa-lab-base`.
-1. `common` + `ssh_crosshost` contra `hosts: all` — precisam rodar juntos,
-   na mesma play, porque `ssh_crosshost` usa `hostvars` para levar a chave
-   pública gerada na `workstation` até `servera`/`serverb` na mesma
-   execução (evita condição de corrida entre gerar a chave numa execução do
-   playbook e distribuí-la só na próxima).
-2. `servera` + `lab_common` contra `hosts: servera`.
-3. `serverb` + `lab_common` contra `hosts: serverb`.
-4. `dashboard` + `workstation` contra `hosts: workstation` — o role
-   `dashboard` roda antes de `workstation` para que `/opt/rhcsa-lab-dashboard`
-   (com `backend.py`, importado por `lab` via `sys.path.insert`) já exista
-   quando o dispatcher `lab` for instalado.
-
-O playbook só roda depois que o `terraform apply` termina, ou seja, com as
-3 VMs já criadas — o role `ssh_crosshost` precisa de `servera`/`serverb` de
-pé para autorizar neles a chave da `workstation`.
-
-## Sem Packer
-
-A imagem golden é construída direto por `virt-install` + kickstart
-(`scripts/build-image.sh`, detalhes em [Imagem golden](imagem-golden.md)),
-sem passar por Packer. Decisão deliberada: reduzir
-o número de ferramentas que o usuário final precisa instalar e aprender.
-`virt-install` já é necessário de qualquer forma (é o mecanismo usado para a
-instalação desassistida), então evitar Packer elimina uma dependência
-inteira sem perder determinismo — o fluxo inteiro (kickstart -> instalação
--> sysprep offline via `virt-customize` -> qcow2 usado como volume base pelo
-Terraform) é reproduzível e não depende de nenhum builder externo.
-
-## RHEL 10 real, não uma distribuição derivada
-
-O objetivo do laboratório é treinar para um exame aplicado sobre RHEL de
-verdade, incluindo comportamentos que só existem por causa do registro via
-subscription (repositórios, bug de GPG da 4ª chave — ver
-[Problemas conhecidos](problemas-conhecidos.md)). Por isso o projeto usa a ISO RHEL
-10 real do usuário, registrada via Red Hat Developer Subscription for
-Individuals (gratuita), em vez de uma distribuição binariamente compatível.
-Há uma [guia de uso com Rocky Linux](../how-to/usar-rocky-linux.md) para quem
-quiser testar só a mecânica da infraestrutura, mas esse caminho não é
-mantido com o mesmo rigor.
-
-## Por que Terraform + Ansible (e não Vagrant)
-
-Até 2026-10 o projeto usava Vagrant (`vagrant-libvirt`). Foi trocado porque:
-
-- **Estado explícito:** o Terraform sabe exatamente o que criou; `make
-  destroy` remove domínios, volumes e rede sem deixar sobras (validado no
-  teste de aceitação T11).
-- **Menos peças frágeis:** o plugin `vagrant-libvirt` precisa compilar gems
-  nativas no host e usava defaults (vídeo `cirrus`, máquina `pc`) que o
-  libvirt do RHEL/Rocky 10 rejeita.
-- **Separação clara:** Terraform cuida do que fica fora das VMs; Ansible, do
-  que fica dentro. Os dois leem o mesmo `machines.yaml`.
-- **Um comando:** `make deploy` encadeia imagem, infraestrutura e
-  configuração, sem passos manuais no meio — inclusive o registro da
-  subscription, antes manual.
+- O repo é uma cópia fiel do lab do homelab; só IPs e textos de
+  console/reboot mudam, conforme a tabela acima.
+- 3 VMs; o "classroom" e o dashboard são serviços da workstation.
+- `lab` = wrapper (registro/IA) → dispatcher → `ssh root@host lab ...`.
+- O lockdown final deixa as 3 VMs sem nenhum repositório habilitado.
